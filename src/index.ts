@@ -12,7 +12,7 @@ app.use(express.json());
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
-    bot: 'Nidaa 🌙',
+    bot: 'Nidaa',
     tagline: 'The gentle call to prayer. Your silent mu’adhin.',
     timestamp: new Date().toISOString(),
   });
