@@ -28,22 +28,10 @@ app.get('/api/admin/stats', async (req, res) => {
   res.status(200).json(stats);
 });
 
-// Visual Admin Dashboard HTML Endpoint
+// Visual Admin Dashboard HTML Endpoint with Real-Time Auto-Refresh
 app.get('/admin', async (req, res) => {
   const stats = await userRepository.getUserStats();
   
-  const userRowsHtml = stats.users.map(u => `
-    <tr>
-      <td><strong>${u.id}</strong></td>
-      <td><span class="badge ${u.platform}">${u.platform.toUpperCase()}</span></td>
-      <td><code>${u.chatId}</code></td>
-      <td>${u.latitude.toFixed(4)}, ${u.longitude.toFixed(4)}</td>
-      <td>${u.timezone}</td>
-      <td>${u.calculationMethod}</td>
-      <td>${new Date(u.createdAt).toLocaleString()}</td>
-    </tr>
-  `).join('') || '<tr><td colspan="7" style="text-align:center; padding: 20px;">No registered users yet. Share location on Telegram or WhatsApp to register.</td></tr>';
-
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -56,6 +44,9 @@ app.get('/admin', async (req, res) => {
         .container { max-width: 1100px; margin: 0 auto; }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2d6a4f; padding-bottom: 15px; margin-bottom: 30px; }
         h1 { color: #1b4332; margin: 0; }
+        .live-indicator { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: #2d6a4f; background: #e8f5e9; padding: 6px 14px; border-radius: 20px; }
+        .pulse-dot { width: 10px; height: 10px; background-color: #2e7d32; border-radius: 50%; display: inline-block; animation: pulse 1.8s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 125, 50, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(46, 125, 50, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(46, 125, 50, 0); } }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 35px; }
         .stat-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center; }
         .stat-number { font-size: 38px; font-weight: bold; color: #2d6a4f; margin-top: 5px; }
@@ -74,21 +65,24 @@ app.get('/admin', async (req, res) => {
       <div class="container">
         <div class="header">
           <h1>Nidaa 🌙 Admin Dashboard</h1>
-          <span>Live User Analytics</span>
+          <div class="live-indicator">
+            <span class="pulse-dot"></span>
+            <span>Live Auto-Refreshing</span>
+          </div>
         </div>
 
         <div class="stats-grid">
           <div class="stat-card">
             <div class="stat-label">Total Active Users</div>
-            <div class="stat-number">${stats.totalUsers}</div>
+            <div class="stat-number" id="totalUsers">${stats.totalUsers}</div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Telegram Users</div>
-            <div class="stat-number">${stats.telegramUsers}</div>
+            <div class="stat-number" id="telegramUsers">${stats.telegramUsers}</div>
           </div>
           <div class="stat-card">
             <div class="stat-label">WhatsApp Users</div>
-            <div class="stat-number">${stats.whatsappUsers}</div>
+            <div class="stat-number" id="whatsappUsers">${stats.whatsappUsers}</div>
           </div>
         </div>
 
@@ -105,11 +99,46 @@ app.get('/admin', async (req, res) => {
               <th>Registered At</th>
             </tr>
           </thead>
-          <tbody>
-            ${userRowsHtml}
+          <tbody id="userTableBody">
           </tbody>
         </table>
       </div>
+
+      <script>
+        async function updateDashboard() {
+          try {
+            const res = await fetch('/api/admin/stats');
+            const data = await res.json();
+            
+            document.getElementById('totalUsers').innerText = data.totalUsers;
+            document.getElementById('telegramUsers').innerText = data.telegramUsers;
+            document.getElementById('whatsappUsers').innerText = data.whatsappUsers;
+
+            const tableBody = document.getElementById('userTableBody');
+            if (data.users.length === 0) {
+              tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 20px;">No registered users yet. Share location on Telegram or WhatsApp to register.</td></tr>';
+            } else {
+              tableBody.innerHTML = data.users.map(u => \`
+                <tr>
+                  <td><strong>\${u.id}</strong></td>
+                  <td><span class="badge \${u.platform}">\${u.platform.toUpperCase()}</span></td>
+                  <td><code>\${u.chatId}</code></td>
+                  <td>\${u.latitude.toFixed(4)}, \${u.longitude.toFixed(4)}</td>
+                  <td>\${u.timezone}</td>
+                  <td>\${u.calculationMethod}</td>
+                  <td>\${new Date(u.createdAt).toLocaleString()}</td>
+                </tr>
+              \`).join('');
+            }
+          } catch (err) {
+            console.error('Auto-refresh error:', err);
+          }
+        }
+
+        // Initial render & 5-second live polling loop
+        updateDashboard();
+        setInterval(updateDashboard, 5000);
+      </script>
     </body>
     </html>
   `);
