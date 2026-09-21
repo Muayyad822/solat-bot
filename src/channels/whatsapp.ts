@@ -17,7 +17,7 @@ export async function sendWhatsAppNotification(
 
   const url = `https://graph.facebook.com/v20.0/${config.whatsapp.phoneNumberId}/messages`;
 
-  // Pre-Approved Utility Template Payload for Nidaa
+  // 1. Try sending via Pre-Approved Utility Template
   const templatePayload = {
     messaging_product: 'whatsapp',
     to: phoneNumber,
@@ -38,6 +38,16 @@ export async function sendWhatsAppNotification(
     },
   };
 
+  // 2. Fallback Free-Form Text Message (Works instantly inside active 24h user window while template is in review)
+  const textPayload = {
+    messaging_product: 'whatsapp',
+    to: phoneNumber,
+    type: 'text',
+    text: {
+      body: `It is time for ${prayerName} at ${targetTimeFormatted}.\n\nReflection: ${reflection}\n\nPowered by Nidaa.`,
+    },
+  };
+
   try {
     const response = await axios.post(url, templatePayload, {
       headers: {
@@ -47,6 +57,17 @@ export async function sendWhatsAppNotification(
     });
     console.log(`[WhatsApp] Successfully sent Nidaa template message to ${phoneNumber}. Message ID:`, response.data?.messages?.[0]?.id);
   } catch (err) {
-    console.error(`[WhatsApp] Error sending Nidaa message via Meta Graph API:`, (err as any).response?.data || (err as Error).message);
+    console.warn(`[WhatsApp] Template 'nidaa_prayer_reminder' failed or in review. Falling back to free-form text message...`);
+    try {
+      const fallbackResponse = await axios.post(url, textPayload, {
+        headers: {
+          Authorization: `Bearer ${config.whatsapp.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      console.log(`[WhatsApp] Successfully delivered fallback text message to ${phoneNumber}. Message ID:`, fallbackResponse.data?.messages?.[0]?.id);
+    } catch (fallbackErr) {
+      console.error(`[WhatsApp] Error sending fallback text message via Meta Graph API:`, (fallbackErr as any).response?.data || (fallbackErr as Error).message);
+    }
   }
 }

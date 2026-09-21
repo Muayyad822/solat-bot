@@ -141,6 +141,14 @@ The temporary token generated in API Setup expires in 24 hours. Generate a perma
 5. Click **Verify and Save**.
 6. Under **Webhook fields**, find `messages` and click **Subscribe**.
 
+### Step 4.6: Privacy Policy URL for Meta Live Mode Approval
+Meta requires a valid HTTPS Privacy Policy URL to switch your App from Development Mode to Live Mode. Nidaa serves a built-in compliant Privacy Policy directly from your server:
+
+```text
+https://nidaa-bot.onrender.com/privacy
+```
+Enter this URL in Meta Dashboard under **App Settings > Basic > Privacy Policy URL**.
+
 ---
 
 ## 5. Firebase & Google Cloud Setup (OPTIONAL - Skip if using Section 10)
@@ -223,58 +231,3 @@ If you want a **100% free production deployment** without Google Cloud and witho
 | **Database** | **MongoDB Atlas (Free M0 Cluster)** or **Supabase** | **$0.00 / mo** (No Credit Card) | 512MB free storage forever for user profile documents. |
 | **Uptime & Midnight Cron** | **cron-job.org** | **$0.00 / mo** (No Credit Card) | Free external cloud cron service to keep Render server awake and trigger daily schedule generation. |
 | **Timers / Queue** | Node.js In-Memory Scheduler | **$0.00** | Uses built-in `setTimeout` dynamic delay math (included in Nidaa codebase out-of-the-box). |
-
----
-
-### Step-by-Step 100% Free Deployment Guide
-
-#### Step 1: Push Code to GitHub
-```bash
-git init
-git add .
-git commit -m "Initial Nidaa release"
-git remote add origin https://github.com/YOUR_USERNAME/nidaa.git
-git push -u origin main
-```
-
-#### Step 2: Deploy Web Service on Render (No Credit Card)
-1. Go to [dashboard.render.com](https://dashboard.render.com) and create a free account.
-2. Click **New +** $\rightarrow$ **Web Service**.
-3. Connect your GitHub repository `nidaa`.
-4. Configure settings:
-   - **Name:** `nidaa-bot`
-   - **Environment:** `Node`
-   - **Build Command:** `npm install && npm run build`
-   - **Start Command:** `npm start`
-5. Add environment variables:
-   - `BASE_URL`: `https://nidaa-bot.onrender.com`
-   - `TELEGRAM_BOT_TOKEN`: `your_telegram_token`
-   - `WHATSAPP_PHONE_NUMBER_ID`: `your_whatsapp_phone_id`
-   - `WHATSAPP_ACCESS_TOKEN`: `your_whatsapp_access_token`
-   - `WHATSAPP_VERIFY_TOKEN`: `nidaa_webhook_verify_secret`
-6. Click **Create Web Service**. Render builds and deploys your server to `https://nidaa-bot.onrender.com`.
-
-#### Step 3: Register Production Webhooks
-Set Telegram Webhook:
-```text
-https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=https://nidaa-bot.onrender.com/api/webhooks/telegram
-```
-
-Set Meta WhatsApp Webhook Callback URL:
-```text
-https://nidaa-bot.onrender.com/api/webhooks/whatsapp
-```
-
-#### Step 4: Keep Render Awake & Trigger Midnight Schedule via cron-job.org
-Render free servers go to sleep after 15 minutes of inactivity. Use [cron-job.org](https://cron-job.org) (100% free) to keep it awake and trigger daily schedules:
-
-1. Create a free account at [cron-job.org](https://cron-job.org).
-2. **Cron Job 1 (Uptime Pinger):**
-   - **URL:** `https://nidaa-bot.onrender.com/health`
-   - **Schedule:** Every 10 minutes.
-   - *This prevents Render from going to sleep so webhooks answer instantly.*
-3. **Cron Job 2 (Daily Schedule Generator):**
-   - **URL:** `https://nidaa-bot.onrender.com/api/workers/daily-cron`
-   - **HTTP Method:** `POST`
-   - **Schedule:** Every day at `00:00 UTC` (Midnight).
-   - *This generates today's 5 prayer reminders for all active users.*
