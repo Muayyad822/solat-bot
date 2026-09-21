@@ -3,6 +3,8 @@ import { config } from '../config/env.js';
 import { userRepository, UserProfile } from '../db/userRepository.js';
 import { calculateDailyPrayers, formatPrayerTime } from '../domain/prayerTimes.js';
 import { schedulePrayerTask } from '../queue/cloudTasks.js';
+import { sendWhatsAppNotification } from '../channels/whatsapp.js';
+import axios from 'axios';
 
 // GET verification for Meta Webhook Registration
 export const verifyWhatsAppWebhook = (req: Request, res: Response) => {
@@ -28,6 +30,8 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
 
   try {
     const body = req.body;
+    console.log('[WhatsApp Webhook] Received payload:', JSON.stringify(body));
+
     if (body.object !== 'whatsapp_business_account') return;
 
     const entry = body.entry?.[0];
@@ -37,12 +41,14 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
 
     if (!message) return;
 
-    const fromPhoneNumber = message.from; // Phone number of sender
+    const fromPhoneNumber = message.from; // Sender phone number
     const userId = `wa_${fromPhoneNumber}`;
 
-    // 1. Handle incoming Location message
+    // 1. Handle incoming Location payload
     if (message.type === 'location') {
       const { latitude, longitude } = message.location;
+      console.log(`[WhatsApp Webhook] Received location from ${fromPhoneNumber}: Lat ${latitude}, Lng ${longitude}`);
+      
       const { timezone, schedule } = calculateDailyPrayers(latitude, longitude);
 
       const userProfile: UserProfile = {
@@ -68,10 +74,40 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
         await schedulePrayerTask(userId, capitalizedName, time as Date, userProfile.leadTimeMinutes);
       }
 
+      const fajrFormatted = formatPrayerTime(schedule.fajr, timezone);
       const dhuhrFormatted = formatPrayerTime(schedule.dhuhr, timezone);
-      console.log(`[WhatsApp Webhook] Location saved for WhatsApp user ${fromPhoneNumber} (${timezone}). Next prayer Dhuhr: ${dhuhrFormatted}`);
+      const asrFormatted = formatPrayerTime(schedule.asr, timezone);
+
+      // Send immediate confirmation reply via WhatsApp
+      const replyUrl = `https://graph.facebook.com/v20.0/${config.whatsapp.phoneNumberId}/messages`;
+      await axios.post(replyUrl, {
+        messaging_product: 'whatsapp',
+        to: fromPhoneNumber,
+        type: 'text',
+        text: {
+          body: `✅ Location set successfully!\n\n📍 Timezone: ${timezone}\n\nToday's Schedule:\n• Fajr: ${fajrFormatted}\n• Dhuhr: ${dhuhrFormatted}\n• Asr: ${asrFormatted}\n\nNidaa will send quiet text reminders right when it's time to pray.`,
+        },
+      }, {
+        headers: { Authorization: `Bearer ${config.whatsapp.accessToken}` },
+      });
+
+      console.log(`[WhatsApp Webhook] Confirmation sent to ${fromPhoneNumber}`);
+    } 
+    // 2. Handle Text messages (e.g. "Hi", "Start")
+    else if (message.type === 'text') {
+      const replyUrl = `https://graph.facebook.com/v20.0/${config.whatsapp.phoneNumberId}/messages`;
+      await axios.post(replyUrl, {
+        messaging_product: 'whatsapp',
+        to: fromPhoneNumber,
+        type: 'text',
+        text: {
+          body: `Assalamu Alaikum! Welcome to Nidaa, your silent mu'adhin.\n\nPlease share your location (tap 📎 Paperclip > Location > Send Your Current Location) so we can calculate accurate prayer times for your area.`,
+        },
+      }, {
+        headers: { Authorization: `Bearer ${config.whatsapp.accessToken}` },
+      });
     }
   } catch (err) {
-    console.error('[WhatsApp Webhook] Error processing incoming payload:', (err as Error).message);
+    console.error('[WhatsApp Webhook] Error processing incoming payload:', (err as any).response?.data || (err as Error).message);
   }
 };
