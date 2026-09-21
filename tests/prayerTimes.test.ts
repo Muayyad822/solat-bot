@@ -1,6 +1,7 @@
 import assert from 'node:assert';
 import { test } from 'node:test';
 import { calculateDailyPrayers, getRandomReflection, formatPrayerTime } from '../src/domain/prayerTimes.js';
+import { checkAndDispatchDueReminders } from '../src/workers/checkDueReminders.js';
 
 test('calculateDailyPrayers - Lagos Coordinates', () => {
   // Lagos, Nigeria: Lat 6.5244, Lng 3.3792
@@ -34,4 +35,9 @@ test('formatPrayerTime - Formats correctly in timezone', () => {
   const formatted = formatPrayerTime(date, 'Africa/Lagos');
   assert.strictEqual(typeof formatted, 'string');
   assert.ok(formatted.includes('AM') || formatted.includes('PM'));
+});
+
+test('checkAndDispatchDueReminders - Executes without error', async () => {
+  const count = await checkAndDispatchDueReminders();
+  assert.ok(typeof count === 'number');
 });

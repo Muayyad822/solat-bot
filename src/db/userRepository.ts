@@ -10,6 +10,7 @@ export interface UserProfile {
   calculationMethod: string; // e.g. "MuslimWorldLeague"
   leadTimeMinutes: number;   // 0 = exact time, 5 = 5 mins before
   isActive: boolean;
+  lastNotified: Record<string, string>; // e.g. { "Dhuhr": "2026-09-21" }
   createdAt: string;
   updatedAt: string;
 }
@@ -21,6 +22,7 @@ export class UserRepository {
   private collectionName = 'users';
 
   async saveUser(user: UserProfile): Promise<void> {
+    if (!user.lastNotified) user.lastNotified = {};
     try {
       const db = getFirestore();
       await db.collection(this.collectionName).doc(user.id).set(user, { merge: true });
@@ -58,6 +60,14 @@ export class UserRepository {
     
     // Return memory fallback if Firestore was empty or failed
     return Array.from(memoryUserStore.values()).filter(u => u.isActive);
+  }
+
+  async markPrayerNotified(userId: string, prayerName: string, dateStr: string): Promise<void> {
+    const user = await this.getUserById(userId);
+    if (!user) return;
+    if (!user.lastNotified) user.lastNotified = {};
+    user.lastNotified[prayerName] = dateStr;
+    await this.saveUser(user);
   }
 }
 

@@ -14,7 +14,7 @@ telegramBot.command('start', async (ctx) => {
     .resized();
 
   await ctx.reply(
-    `*Nidaa* \n` +
+    `*Nidaa* 🌙\n` +
     `_The gentle call to prayer. Your silent mu’adhin._\n\n` +
     `Assalamu Alaikum! Welcome to *Nidaa*, quiet, peaceful text reminders right when it's time to pray.\n\n` +
     `Nidaa provides discreet reminders ideal for office, meeting, or silent environments—helping you stay connected without loud alarms.\n\n` +
@@ -44,6 +44,7 @@ telegramBot.on('message:location', async (ctx) => {
     calculationMethod: 'MuslimWorldLeague',
     leadTimeMinutes: 0,
     isActive: true,
+    lastNotified: {},
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -71,7 +72,7 @@ telegramBot.on('message:location', async (ctx) => {
     `• Asr: ${asrFormatted}\n` +
     `• Maghrib: ${maghribFormatted}\n` +
     `• Isha: ${ishaFormatted}\n\n` +
-    `Nidaa will send gentle text reminders right when it's time to pray.`,
+    `Nidaa 🌙 will send gentle text reminders right when it's time to pray.`,
     { parse_mode: 'Markdown' }
   );
 });
@@ -84,7 +85,7 @@ export async function sendTelegramNotification(
 ): Promise<void> {
   const reflection = getRandomReflection(prayerName);
   const message =
-    `*Nidaa* \n` +
+    `*Nidaa* 🌙\n` +
     `It is time for *${prayerName}* (${targetTimeFormatted}).\n` +
     `_${reflection}_`;
 

@@ -3,7 +3,6 @@ import { config } from '../config/env.js';
 import { userRepository, UserProfile } from '../db/userRepository.js';
 import { calculateDailyPrayers, formatPrayerTime } from '../domain/prayerTimes.js';
 import { schedulePrayerTask } from '../queue/cloudTasks.js';
-import { sendWhatsAppNotification } from '../channels/whatsapp.js';
 
 // GET verification for Meta Webhook Registration
 export const verifyWhatsAppWebhook = (req: Request, res: Response) => {
@@ -56,6 +55,7 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
         calculationMethod: 'MuslimWorldLeague',
         leadTimeMinutes: 0,
         isActive: true,
+        lastNotified: {},
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
