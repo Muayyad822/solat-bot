@@ -3,7 +3,6 @@ import { config } from '../config/env.js';
 import { userRepository, UserProfile } from '../db/userRepository.js';
 import { calculateDailyPrayers, formatPrayerTime } from '../domain/prayerTimes.js';
 import { schedulePrayerTask } from '../queue/cloudTasks.js';
-import { sendWhatsAppNotification } from '../channels/whatsapp.js';
 import axios from 'axios';
 
 // GET verification for Meta Webhook Registration
@@ -39,10 +38,23 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
     const value = changes?.value;
     const message = value?.messages?.[0];
 
-    if (!message) return;
+    if (!message) {
+      console.log('[WhatsApp Webhook] No message in payload (might be status update notification).');
+      return;
+    }
 
     const fromPhoneNumber = message.from; // Sender phone number
     const userId = `wa_${fromPhoneNumber}`;
+    console.log(`[WhatsApp Webhook] Processing message from ${fromPhoneNumber}, type: ${message.type}`);
+
+    // Check configuration
+    if (!config.whatsapp.phoneNumberId || !config.whatsapp.accessToken) {
+      console.error('[WhatsApp Webhook] ERROR: WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_ACCESS_TOKEN is missing in environment variables!');
+      return;
+    }
+
+    const replyUrl = `https://graph.facebook.com/v20.0/${config.whatsapp.phoneNumberId}/messages`;
+    const headers = { Authorization: `Bearer ${config.whatsapp.accessToken}` };
 
     // 1. Handle incoming Location payload
     if (message.type === 'location') {
@@ -78,36 +90,39 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
       const dhuhrFormatted = formatPrayerTime(schedule.dhuhr, timezone);
       const asrFormatted = formatPrayerTime(schedule.asr, timezone);
 
-      // Send immediate confirmation reply via WhatsApp
-      const replyUrl = `https://graph.facebook.com/v20.0/${config.whatsapp.phoneNumberId}/messages`;
-      await axios.post(replyUrl, {
-        messaging_product: 'whatsapp',
-        to: fromPhoneNumber,
-        type: 'text',
-        text: {
-          body: `✅ Location set successfully!\n\n📍 Timezone: ${timezone}\n\nToday's Schedule:\n• Fajr: ${fajrFormatted}\n• Dhuhr: ${dhuhrFormatted}\n• Asr: ${asrFormatted}\n\nNidaa will send quiet text reminders right when it's time to pray.`,
-        },
-      }, {
-        headers: { Authorization: `Bearer ${config.whatsapp.accessToken}` },
-      });
-
-      console.log(`[WhatsApp Webhook] Confirmation sent to ${fromPhoneNumber}`);
+      // Send immediate location confirmation reply
+      try {
+        await axios.post(replyUrl, {
+          messaging_product: 'whatsapp',
+          to: fromPhoneNumber,
+          type: 'text',
+          text: {
+            body: `✅ Location set successfully!\n\n📍 Timezone: ${timezone}\n\nToday's Schedule:\n• Fajr: ${fajrFormatted}\n• Dhuhr: ${dhuhrFormatted}\n• Asr: ${asrFormatted}\n\nNidaa will send quiet text reminders right when it's time to pray.`,
+          },
+        }, { headers });
+        console.log(`[WhatsApp Webhook] Location confirmation sent to ${fromPhoneNumber}`);
+      } catch (sendErr) {
+        console.error(`[WhatsApp Webhook] Error sending location confirmation:`, (sendErr as any).response?.data || (sendErr as Error).message);
+      }
     } 
     // 2. Handle Text messages (e.g. "Hi", "Start")
     else if (message.type === 'text') {
-      const replyUrl = `https://graph.facebook.com/v20.0/${config.whatsapp.phoneNumberId}/messages`;
-      await axios.post(replyUrl, {
-        messaging_product: 'whatsapp',
-        to: fromPhoneNumber,
-        type: 'text',
-        text: {
-          body: `Assalamu Alaikum! Welcome to Nidaa, your silent mu'adhin.\n\nPlease share your location (tap 📎 Paperclip > Location > Send Your Current Location) so we can calculate accurate prayer times for your area.`,
-        },
-      }, {
-        headers: { Authorization: `Bearer ${config.whatsapp.accessToken}` },
-      });
+      console.log(`[WhatsApp Webhook] Received text "${message.text?.body}" from ${fromPhoneNumber}. Sending welcome message...`);
+      try {
+        const replyRes = await axios.post(replyUrl, {
+          messaging_product: 'whatsapp',
+          to: fromPhoneNumber,
+          type: 'text',
+          text: {
+            body: `Assalamu Alaikum! Welcome to Nidaa, your silent mu'adhin.\n\nPlease share your location (tap 📎 Paperclip > Location > Send Your Current Location) so we can calculate accurate prayer times for your area.`,
+          },
+        }, { headers });
+        console.log(`[WhatsApp Webhook] Welcome reply sent to ${fromPhoneNumber}, Message ID:`, replyRes.data?.messages?.[0]?.id);
+      } catch (sendErr) {
+        console.error(`[WhatsApp Webhook] Error sending welcome reply to ${fromPhoneNumber}:`, (sendErr as any).response?.data || (sendErr as Error).message);
+      }
     }
   } catch (err) {
-    console.error('[WhatsApp Webhook] Error processing incoming payload:', (err as any).response?.data || (err as Error).message);
+    console.error('[WhatsApp Webhook] Error processing incoming payload:', (err as Error).message);
   }
 };
