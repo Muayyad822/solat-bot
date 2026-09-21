@@ -5,6 +5,7 @@ import { verifyWhatsAppWebhook, handleWhatsAppWebhook } from './webhooks/whatsap
 import { runDailyCronJob } from './workers/dailyCron.js';
 import { handleDispatchReminder } from './workers/dispatchReminder.js';
 import { checkAndDispatchDueReminders } from './workers/checkDueReminders.js';
+import { userRepository } from './db/userRepository.js';
 
 const app = express();
 app.use(express.json());
@@ -21,7 +22,100 @@ app.get('/health', async (req, res) => {
   });
 });
 
-// HTML Privacy Policy Endpoint for Meta Developer App Live Mode Approval
+// Admin Stats JSON Endpoint
+app.get('/api/admin/stats', async (req, res) => {
+  const stats = await userRepository.getUserStats();
+  res.status(200).json(stats);
+});
+
+// Visual Admin Dashboard HTML Endpoint
+app.get('/admin', async (req, res) => {
+  const stats = await userRepository.getUserStats();
+  
+  const userRowsHtml = stats.users.map(u => `
+    <tr>
+      <td><strong>${u.id}</strong></td>
+      <td><span class="badge ${u.platform}">${u.platform.toUpperCase()}</span></td>
+      <td><code>${u.chatId}</code></td>
+      <td>${u.latitude.toFixed(4)}, ${u.longitude.toFixed(4)}</td>
+      <td>${u.timezone}</td>
+      <td>${u.calculationMethod}</td>
+      <td>${new Date(u.createdAt).toLocaleString()}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="7" style="text-align:center; padding: 20px;">No registered users yet. Share location on Telegram or WhatsApp to register.</td></tr>';
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Admin Dashboard - Nidaa</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f8f9fa; color: #333; margin: 0; padding: 30px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2d6a4f; padding-bottom: 15px; margin-bottom: 30px; }
+        h1 { color: #1b4332; margin: 0; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 35px; }
+        .stat-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center; }
+        .stat-number { font-size: 38px; font-weight: bold; color: #2d6a4f; margin-top: 5px; }
+        .stat-label { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #666; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        th { background: #2d6a4f; color: white; text-align: left; padding: 14px 16px; font-size: 14px; }
+        td { padding: 14px 16px; border-bottom: 1px solid #eee; font-size: 14px; }
+        tr:hover { background: #f1f8f5; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .badge.telegram { background: #e3f2fd; color: #0288d1; }
+        .badge.whatsapp { background: #e8f5e9; color: #2e7d32; }
+        code { font-family: monospace; background: #f4f4f4; padding: 2px 6px; border-radius: 4px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Nidaa 🌙 Admin Dashboard</h1>
+          <span>Live User Analytics</span>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total Active Users</div>
+            <div class="stat-number">${stats.totalUsers}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Telegram Users</div>
+            <div class="stat-number">${stats.telegramUsers}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">WhatsApp Users</div>
+            <div class="stat-number">${stats.whatsappUsers}</div>
+          </div>
+        </div>
+
+        <h2>User Profiles & Location Data</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>User ID</th>
+              <th>Platform</th>
+              <th>Chat ID / Phone</th>
+              <th>Coordinates</th>
+              <th>Timezone</th>
+              <th>Method</th>
+              <th>Registered At</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${userRowsHtml}
+          </tbody>
+        </table>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
+// HTML Privacy Policy Endpoint for Meta Developer App Approval
 app.get('/privacy', (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -102,5 +196,6 @@ app.listen(PORT, () => {
   console.log(`📡 Server running on port ${PORT}`);
   console.log(`🔗 Health Check: http://localhost:${PORT}/health`);
   console.log(`🔗 Privacy Policy: http://localhost:${PORT}/privacy`);
+  console.log(`🔗 Admin Dashboard: http://localhost:${PORT}/admin`);
   console.log(`====================================================`);
 });
