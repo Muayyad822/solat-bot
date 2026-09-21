@@ -10,6 +10,12 @@ import { userRepository } from './db/userRepository.js';
 const app = express();
 app.use(express.json());
 
+// Log ALL incoming HTTP requests for troubleshooting
+app.use((req, res, next) => {
+  console.log(`[HTTP Request] ${req.method} ${req.url}`);
+  next();
+});
+
 // Health Check Endpoint (Triggered by cron-job.org every 10 mins & auto-dispatches due reminders)
 app.get('/health', async (req, res) => {
   const dispatched = await checkAndDispatchDueReminders();
