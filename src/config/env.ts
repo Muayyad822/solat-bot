@@ -15,5 +15,8 @@ export const config = {
     location: process.env.GCP_LOCATION || 'us-central1',
     queueName: process.env.GCP_TASKS_QUEUE || 'solat-reminder-queue',
   },
+  telegramBotUrl: process.env.TELEGRAM_BOT_URL || 'https://t.me/nidaa_solat_bot',
+  whatsappBotUrl: process.env.WHATSAPP_BOT_URL || 'https://wa.me/2349017109582?text=Assalamu%20alaikum%20Nidaa%2C%20I%20would%20like%20to%20get%20prayer%20reminders',
+  mongodbUri: process.env.MONGODB_URI || 'mongodb+srv://nidaa_admin:muayyad%40822@cluster0.fmsks83.mongodb.net/?appName=Cluster0',
   firebaseServiceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || '',
 };

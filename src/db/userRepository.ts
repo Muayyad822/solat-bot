@@ -1,6 +1,14 @@
+import dns from 'dns';
 import { getFirestore } from './firebase.js';
 import { MongoClient, Db } from 'mongodb';
 import { config } from '../config/env.js';
+
+// Ensure reliable public DNS servers for MongoDB Atlas SRV lookups on Windows
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {
+  // Ignore if DNS server override fails
+}
 
 export interface UserProfile {
   id: string;                // e.g. "tg_12345678" or "wa_155501992"
@@ -17,24 +25,51 @@ export interface UserProfile {
   updatedAt: string;
 }
 
+export interface UserStats {
+  totalUsers: number;
+  telegramUsers: number;
+  whatsappUsers: number;
+  users: UserProfile[];
+}
+
 // In-memory fallback map for offline / testing mode when no DB is connected
 const memoryUserStore = new Map<string, UserProfile>();
 
 let mongoClient: MongoClient | null = null;
 let mongoDb: Db | null = null;
 
+function sanitizeMongoUri(uri: string): string {
+  if (!uri) return '';
+  const match = uri.match(/^(mongodb(?:\+srv)?:\/\/[^:]+:)(.*)(@[^/]+.*)$/);
+  if (match) {
+    const [, prefix, passAndMore, suffix] = match;
+    if (passAndMore.includes('@')) {
+      const lastAt = passAndMore.lastIndexOf('@');
+      const pass = passAndMore.substring(0, lastAt);
+      const rest = passAndMore.substring(lastAt + 1);
+      return prefix + encodeURIComponent(pass) + '@' + rest + suffix;
+    }
+  }
+  return uri;
+}
+
 async function getMongoDb(): Promise<Db | null> {
-  const uri = process.env.MONGODB_URI;
-  if (!uri) return null;
+  const uri = config.mongodbUri || process.env.MONGODB_URI;
+  if (!uri) {
+    console.warn('[MongoDB] No MONGODB_URI configured.');
+    return null;
+  }
   if (mongoDb) return mongoDb;
+
   try {
-    mongoClient = new MongoClient(uri);
+    const fixedUri = sanitizeMongoUri(uri);
+    mongoClient = new MongoClient(fixedUri);
     await mongoClient.connect();
     mongoDb = mongoClient.db('nidaa');
     console.log('[MongoDB] Connected to MongoDB Atlas successfully.');
     return mongoDb;
   } catch (err) {
-    console.warn('[MongoDB] Failed to connect to MongoDB:', (err as Error).message);
+    console.warn('[MongoDB] Failed to connect to MongoDB Atlas:', (err as Error).message);
     return null;
   }
 }
@@ -55,6 +90,7 @@ export class UserRepository {
           { upsert: true }
         );
         memoryUserStore.set(user.id, user);
+        console.log(`[UserRepository] User ${user.id} saved to MongoDB Atlas.`);
         return;
       } catch (err) {
         console.warn('[MongoDB] Write failed:', (err as Error).message);
@@ -79,6 +115,7 @@ export class UserRepository {
       try {
         const doc = await mDb.collection(this.collectionName).findOne({ id });
         if (doc) return doc as unknown as UserProfile;
+        return null;
       } catch (err) {
         // Fallback
       }
@@ -104,7 +141,7 @@ export class UserRepository {
     if (mDb) {
       try {
         const docs = await mDb.collection(this.collectionName).find({ isActive: true }).toArray();
-        if (docs.length > 0) return docs as unknown as UserProfile[];
+        return docs as unknown as UserProfile[];
       } catch (err) {
         // Fallback
       }
@@ -132,7 +169,7 @@ export class UserRepository {
     if (mDb) {
       try {
         const docs = await mDb.collection(this.collectionName).find({}).toArray();
-        if (docs.length > 0) return docs as unknown as UserProfile[];
+        return docs as unknown as UserProfile[];
       } catch (err) {
         // Fallback
       }
@@ -161,7 +198,7 @@ export class UserRepository {
     await this.saveUser(user);
   }
 
-  async getUserStats(): Promise<{ totalUsers: number; telegramUsers: number; whatsappUsers: number; users: UserProfile[] }> {
+  async getUserStats(): Promise<UserStats> {
     const allUsers = await this.getAllUsers();
     const telegramUsers = allUsers.filter(u => u.platform === 'telegram').length;
     const whatsappUsers = allUsers.filter(u => u.platform === 'whatsapp').length;
