@@ -40,17 +40,46 @@ let mongoDb: Db | null = null;
 
 function sanitizeMongoUri(uri: string): string {
   if (!uri) return '';
-  const match = uri.match(/^(mongodb(?:\+srv)?:\/\/[^:]+:)(.*)(@[^/]+.*)$/);
-  if (match) {
-    const [, prefix, passAndMore, suffix] = match;
-    if (passAndMore.includes('@')) {
-      const lastAt = passAndMore.lastIndexOf('@');
-      const pass = passAndMore.substring(0, lastAt);
-      const rest = passAndMore.substring(lastAt + 1);
-      return prefix + encodeURIComponent(pass) + '@' + rest + suffix;
+  let cleanUri = uri.trim();
+  
+  // If user pasted "MONGODB_URI=mongodb+srv://...", strip leading "MONGODB_URI="
+  if (cleanUri.includes('=')) {
+    const eqIdx = cleanUri.indexOf('=');
+    const prefixKey = cleanUri.substring(0, eqIdx).trim();
+    if (prefixKey.toUpperCase() === 'MONGODB_URI' || cleanUri.startsWith('MONGODB_URI=')) {
+      cleanUri = cleanUri.substring(eqIdx + 1).trim();
     }
   }
-  return uri;
+  cleanUri = cleanUri.replace(/^["']|["']$/g, '');
+
+  const schemeMatch = cleanUri.match(/^(mongodb(?:\+srv)?:\/\/)(.*)$/);
+  if (!schemeMatch) return cleanUri;
+
+  const [, scheme, rest] = schemeMatch;
+  const slashIdx = rest.indexOf('/');
+  const queryIdx = rest.indexOf('?');
+  let pathStart = rest.length;
+  if (slashIdx !== -1) pathStart = slashIdx;
+  if (queryIdx !== -1 && queryIdx < pathStart) pathStart = queryIdx;
+
+  const authority = rest.substring(0, pathStart);
+  const pathAndQuery = rest.substring(pathStart);
+
+  const lastAt = authority.lastIndexOf('@');
+  if (lastAt === -1) return cleanUri;
+
+  const userInfo = authority.substring(0, lastAt);
+  const host = authority.substring(lastAt + 1);
+
+  const colonIdx = userInfo.indexOf(':');
+  if (colonIdx === -1) return cleanUri;
+
+  const username = userInfo.substring(0, colonIdx);
+  const rawPassword = userInfo.substring(colonIdx + 1);
+
+  const encodedPassword = encodeURIComponent(decodeURIComponent(rawPassword));
+
+  return `${scheme}${username}:${encodedPassword}@${host}${pathAndQuery}`;
 }
 
 async function getMongoDb(): Promise<Db | null> {

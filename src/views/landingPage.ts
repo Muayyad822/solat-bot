@@ -49,12 +49,16 @@ export function getLandingPageHtml(telegramUrl: string, whatsappUrl: string): st
       background: var(--accent-primary);
     }
 
+    html, body {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
     body {
       background-color: var(--bg-primary);
       color: var(--text-primary);
       font-family: var(--font-family);
       line-height: 1.6;
-      overflow-x: hidden;
     }
 
     a {
@@ -325,7 +329,7 @@ export function getLandingPageHtml(telegramUrl: string, whatsappUrl: string): st
 
     .features-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 28px;
     }
 
@@ -387,7 +391,7 @@ export function getLandingPageHtml(telegramUrl: string, whatsappUrl: string): st
 
     .pricing-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
       gap: 32px;
       max-width: 840px;
       margin: 0 auto;
@@ -490,10 +494,37 @@ export function getLandingPageHtml(telegramUrl: string, whatsappUrl: string): st
     }
 
     @media (max-width: 600px) {
-      h1.hero-title { font-size: 36px; }
-      p.hero-subtitle { font-size: 16px; }
+      .container { padding: 0 16px; }
+      .brand { font-size: 18px; gap: 8px; }
+      .brand img { width: 34px; height: 34px; }
+      .nav-links { gap: 14px; }
+      .nav-links a { font-size: 13px; }
+
+      .hero { padding: 50px 0 40px; }
+      h1.hero-title { font-size: 32px; word-break: break-word; overflow-wrap: break-word; }
+      p.hero-subtitle { font-size: 15px; }
       .cta-group { flex-direction: column; width: 100%; }
       .btn { width: 100%; }
+
+      .hero-bg-glow { width: 100%; max-width: 100vw; }
+      .mockup-container { width: 100%; padding: 16px; }
+
+      .features-section { padding: 50px 0; }
+      .features-grid { grid-template-columns: 1fr; gap: 20px; }
+      .feature-card { padding: 24px 20px; }
+
+      .pricing-section { padding: 50px 0; }
+      .pricing-grid { grid-template-columns: 1fr; gap: 24px; }
+      .pricing-card { padding: 28px 20px; }
+
+      .footer-links { gap: 14px; flex-wrap: wrap; }
+    }
+
+    @media (max-width: 380px) {
+      .brand span { font-size: 15px; }
+      .nav-links { gap: 10px; }
+      .nav-links a { font-size: 12px; }
+      h1.hero-title { font-size: 28px; }
     }
   </style>
 </head>

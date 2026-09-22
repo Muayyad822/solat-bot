@@ -44,12 +44,22 @@ export function getPrivacyPageHtml(): string {
       background: var(--accent-primary);
     }
 
+    html, body {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+
     body {
       background-color: var(--bg-primary);
       color: var(--text-primary);
       font-family: var(--font-family);
       line-height: 1.7;
       padding: 40px 20px;
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 20px 12px; }
+      .container { padding: 24px 16px; }
     }
 
     .container {
