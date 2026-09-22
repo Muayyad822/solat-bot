@@ -1,10 +1,10 @@
-export function getPrivacyPageHtml(): string {
+export function getTermsPageHtml(): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Privacy Policy - Nidaa (نِدَاء)</title>
+  <title>Terms of Service - Nidaa (نِدَاء)</title>
   <link rel="icon" href="/nidaaIcon.jpg" type="image/jpeg">
   <style>
     :root {
@@ -137,45 +137,37 @@ export function getPrivacyPageHtml(): string {
     <div class="header">
       <img src="/nidaaIcon.jpg" alt="Nidaa Logo">
       <div>
-        <h1>Privacy Policy for Nidaa (نِدَاء)</h1>
-        <p style="margin: 0; font-size: 13px;"><em>Effective Date: September 21, 2026</em></p>
+        <h1>Terms of Service for Nidaa (نِدَاء)</h1>
+        <p style="margin: 0; font-size: 13px;"><em>Effective Date: September 22, 2026</em></p>
       </div>
     </div>
     
-    <p><strong>Nidaa</strong> ("we", "our", or "us") respects your privacy. This Privacy Policy explains how we collect, use, and protect your information when you interact with the Nidaa bot on Telegram and WhatsApp.</p>
+    <p>Welcome to <strong>Nidaa</strong> ("The gentle call to prayer. Your silent mu’adhin."). By connecting to Nidaa via Telegram or WhatsApp, you agree to these Terms of Service.</p>
 
-    <h2>1. Information We Collect & Anonymization</h2>
-    <ul>
-      <li><strong>Anonymized Location Data:</strong> When you share your location with Nidaa, your GPS coordinates are automatically coarsened/rounded to 2 decimal places (~1km resolution). This allows us to determine your solar timezone and prayer schedule while ensuring your exact pinpoint location (house or building) is never tracked or stored.</li>
-      <li><strong>Account Identifiers:</strong> We store your Telegram Chat ID or WhatsApp Phone Number solely to deliver prayer notifications to your device. We do NOT collect names, profile photos, or chat messages.</li>
-    </ul>
+    <h2>1. Service Description</h2>
+    <p>Nidaa is a free, non-intrusive text-based prayer reminder bot designed for office, meeting, and quiet environments. Nidaa computes prayer schedules locally using astronomical formulas (Adhan engine) and sends notifications accompanied by serene reflections.</p>
 
-    <h2>2. How We Use Information</h2>
-    <ul>
-      <li>To calculate daily prayer schedules locally using astronomical formulas (Adhan engine).</li>
-      <li>To send discrete, quiet text reminders when it is time for prayer.</li>
-    </ul>
+    <h2>2. Acceptable Use</h2>
+    <p>You agree to use Nidaa solely for personal, non-commercial prayer notifications. You agree not to abuse, reverse-engineer, or attempt to disrupt the service or automated infrastructure.</p>
 
-    <h2>3. Data Sharing and Protection</h2>
-    <p>We <strong>never sell, share, rent, or trade</strong> your personal information or location data with third parties or advertising networks. Communication in transit is encrypted via HTTPS/TLS 1.3, and database storage is encrypted at rest using AES-256 encryption.</p>
+    <h2>3. Calculation Accuracy & Disclaimer</h2>
+    <p>Prayer times are computed automatically based on your shared geographic location. While Nidaa uses standard astronomical algorithms (Muslim World League parameters), slight regional variances may exist. Users are encouraged to cross-reference local congregation schedules for strict fasting or congregational timings.</p>
 
-    <h2>4. Data Retention & Instant Right to Erasure</h2>
-    <p>You have full ownership of your data. You can instantly and permanently delete all your stored profile data from our servers at any time:</p>
-    <ul>
-      <li><strong>On WhatsApp:</strong> Send a text message containing <code>STOP</code> or <code>DELETE</code>.</li>
-      <li><strong>On Telegram:</strong> Send the <code>/delete</code> command.</li>
-    </ul>
-    <p>Upon receiving the deletion command, your data will be immediately and permanently purged from our database.</p>
+    <h2>4. Limitation of Liability</h2>
+    <p>Nidaa is provided "as is" and "as available" without warranties of any kind. We are not liable for delayed notifications resulting from third-party network outages (e.g., Telegram, Meta WhatsApp Cloud API, or mobile ISP connectivity).</p>
 
-    <h2>5. Contact Us & Developer Info</h2>
-    <p>If you have any questions, concerns, or feedback regarding this Privacy Policy or your personal data, please feel free to reach out directly:</p>
+    <h2>5. Termination & Data Deletion</h2>
+    <p>You may discontinue your use of Nidaa at any time. You can instantly delete all your stored profile data from our servers by sending <code>/delete</code> on Telegram or texting <code>STOP</code> or <code>DELETE</code> on WhatsApp.</p>
+
+    <h2>6. Contact Us & Developer Info</h2>
+    <p>If you have any questions or feedback regarding Nidaa or these Terms of Service, please feel free to reach out:</p>
     <ul>
       <li><strong>Email Support:</strong> <a href="mailto:muayyad822@gmail.com" style="color: var(--accent-primary);">muayyad822@gmail.com</a></li>
       <li><strong>Developer Portfolio:</strong> <a href="https://abdulmuizjimoh.vercel.app/" target="_blank" rel="noopener" style="color: var(--accent-primary);">abdulmuizjimoh.vercel.app</a></li>
     </ul>
 
     <div class="footer">
-      <p style="margin-bottom: 10px;"><a href="/" style="color: var(--accent-primary);">Home</a> &bull; <a href="/terms" style="color: var(--accent-primary);">Terms of Service</a> &bull; <a href="https://abdulmuizjimoh.vercel.app/" target="_blank" rel="noopener" style="color: var(--accent-primary);">Developer</a></p>
+      <p style="margin-bottom: 10px;"><a href="/" style="color: var(--accent-primary);">Home</a> &bull; <a href="/privacy" style="color: var(--accent-primary);">Privacy Policy</a> &bull; <a href="https://abdulmuizjimoh.vercel.app/" target="_blank" rel="noopener" style="color: var(--accent-primary);">Developer</a></p>
       <p>&copy; ${new Date().getFullYear()} Nidaa. All rights reserved. <em>The gentle call to prayer. Your silent mu’adhin.</em></p>
     </div>
   </div>

@@ -711,10 +711,9 @@ export function getLandingPageHtml(telegramUrl: string, whatsappUrl: string): st
         <span>Nidaa (نِدَاء)</span>
       </div>
       <div class="footer-links">
-        <a href="#features">Features</a>
-        <a href="#pricing">Pricing</a>
         <a href="https://abdulmuizjimoh.vercel.app/" target="_blank" rel="noopener">Developer</a>
         <a href="/privacy">Privacy Policy</a>
+        <a href="/terms">Terms of Service</a>
       </div>
       <p>&copy; ${new Date().getFullYear()} Nidaa. All rights reserved. <em>The gentle call to prayer. Your silent mu’adhin.</em></p>
     </div>

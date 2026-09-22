@@ -10,6 +10,7 @@ import { userRepository } from './db/userRepository.js';
 import { getLandingPageHtml } from './views/landingPage.js';
 import { getAdminPageHtml } from './views/adminPage.js';
 import { getPrivacyPageHtml } from './views/privacyPage.js';
+import { getTermsPageHtml } from './views/termsPage.js';
 
 const app = express();
 app.use(express.json());
@@ -55,6 +56,11 @@ app.get('/admin', async (req, res) => {
 // HTML Privacy Policy Endpoint for Meta Developer App Approval
 app.get('/privacy', (req, res) => {
   res.send(getPrivacyPageHtml());
+});
+
+// HTML Terms of Service Endpoint
+app.get('/terms', (req, res) => {
+  res.send(getTermsPageHtml());
 });
 
 // Telegram Webhook
