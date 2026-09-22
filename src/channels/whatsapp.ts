@@ -71,3 +71,56 @@ export async function sendWhatsAppNotification(
     }
   }
 }
+
+export async function sendWhatsAppContactCard(
+  phoneNumber: string,
+  customPhoneNumberId?: string
+): Promise<void> {
+  const pId = customPhoneNumberId || config.whatsapp.phoneNumberId;
+  if (!pId || !config.whatsapp.accessToken) return;
+
+  const url = `https://graph.facebook.com/v20.0/${pId}/messages`;
+  const contactPayload = {
+    messaging_product: 'whatsapp',
+    to: phoneNumber,
+    type: 'contacts',
+    contacts: [
+      {
+        name: {
+          formatted_name: 'Nidaa Bot',
+          first_name: 'Nidaa',
+          last_name: 'Bot',
+        },
+        phones: [
+          {
+            phone: '+2349017109582',
+            type: 'WORK',
+            wa_id: '2349017109582',
+          },
+        ],
+        org: {
+          company: 'Nidaa Solat Reminders',
+          title: "The gentle call to prayer. Your silent mu'adhin.",
+        },
+        urls: [
+          {
+            url: 'https://nidaa-bot.onrender.com',
+            type: 'WORK',
+          },
+        ],
+      },
+    ],
+  };
+
+  try {
+    await axios.post(url, contactPayload, {
+      headers: {
+        Authorization: `Bearer ${config.whatsapp.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    console.log(`[WhatsApp] Successfully sent Contact Card (vCard) to ${phoneNumber}`);
+  } catch (err) {
+    console.error(`[WhatsApp] Failed to send Contact Card to ${phoneNumber}:`, (err as any).response?.data || (err as Error).message);
+  }
+}

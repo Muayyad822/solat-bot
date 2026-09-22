@@ -3,6 +3,7 @@ import { config } from '../config/env.js';
 import { userRepository, UserProfile } from '../db/userRepository.js';
 import { calculateDailyPrayers, formatPrayerTime } from '../domain/prayerTimes.js';
 import { schedulePrayerTask } from '../queue/cloudTasks.js';
+import { sendWhatsAppContactCard } from '../channels/whatsapp.js';
 import axios from 'axios';
 
 // GET verification for Meta Webhook Registration
@@ -109,10 +110,13 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
           to: fromPhoneNumber,
           type: 'text',
           text: {
-            body: `✅ Location set successfully!\n\n📍 Timezone: ${timezone}\n🔒 Privacy: Coordinates anonymized (~1km resolution)\n\nToday's Schedule:\n• Fajr: ${fajrFormatted}\n• Dhuhr: ${dhuhrFormatted}\n• Asr: ${asrFormatted}\n• Maghrib: ${maghribFormatted}\n• Isha: ${ishaFormatted}\n\nNidaa will send quiet text reminders right when it's time to pray.\n\n(Tip: Text "STOP" or "DELETE" anytime to permanently delete your data).`,
+            body: `✅ Location set successfully!\n\n📍 Timezone: ${timezone}\n🔒 Privacy: Coordinates anonymized (~1km resolution)\n\nToday's Schedule:\n• Fajr: ${fajrFormatted}\n• Dhuhr: ${dhuhrFormatted}\n• Asr: ${asrFormatted}\n• Maghrib: ${maghribFormatted}\n• Isha: ${ishaFormatted}\n\nNidaa will send quiet text reminders right when it's time to pray.\n\n(Tip: Tap the contact card below to save Nidaa Bot to your phone!)`,
           },
         }, { headers });
         console.log(`[WhatsApp Webhook] Location confirmation sent to ${fromPhoneNumber}`);
+        
+        // Send vCard Contact attachment so user can save contact with 1 tap
+        await sendWhatsAppContactCard(fromPhoneNumber, phoneNumberId);
       } catch (sendErr) {
         console.error(`[WhatsApp Webhook] Error sending location confirmation:`, (sendErr as any).response?.data || (sendErr as Error).message);
       }
@@ -151,6 +155,9 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
           },
         }, { headers });
         console.log(`[WhatsApp Webhook] Welcome reply sent to ${fromPhoneNumber}, Message ID:`, replyRes.data?.messages?.[0]?.id);
+
+        // Send vCard Contact attachment so user can save contact with 1 tap
+        await sendWhatsAppContactCard(fromPhoneNumber, phoneNumberId);
       } catch (sendErr) {
         console.error(`[WhatsApp Webhook] Error sending welcome reply to ${fromPhoneNumber}:`, (sendErr as any).response?.data || (sendErr as Error).message);
       }
