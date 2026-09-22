@@ -47,13 +47,15 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
     const userId = `wa_${fromPhoneNumber}`;
     console.log(`[WhatsApp Webhook] Processing message from ${fromPhoneNumber}, type: ${message.type}`);
 
+    const phoneNumberId = value?.metadata?.phone_number_id || config.whatsapp.phoneNumberId;
+
     // Check configuration
-    if (!config.whatsapp.phoneNumberId || !config.whatsapp.accessToken) {
+    if (!phoneNumberId || !config.whatsapp.accessToken) {
       console.error('[WhatsApp Webhook] ERROR: WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_ACCESS_TOKEN is missing in environment variables!');
       return;
     }
 
-    const replyUrl = `https://graph.facebook.com/v20.0/${config.whatsapp.phoneNumberId}/messages`;
+    const replyUrl = `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`;
     const headers = { Authorization: `Bearer ${config.whatsapp.accessToken}` };
 
     // 1. Handle incoming Location payload
@@ -83,12 +85,18 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
       // Schedule remaining prayer times for today
       for (const [prayerName, time] of Object.entries(schedule)) {
         const capitalizedName = prayerName.charAt(0).toUpperCase() + prayerName.slice(1);
-        await schedulePrayerTask(userId, capitalizedName, time as Date, userProfile.leadTimeMinutes);
+        try {
+          await schedulePrayerTask(userId, capitalizedName, time as Date, userProfile.leadTimeMinutes);
+        } catch (schedErr) {
+          console.error(`[WhatsApp Webhook] Error scheduling prayer task for ${capitalizedName}:`, (schedErr as Error).message);
+        }
       }
 
       const fajrFormatted = formatPrayerTime(schedule.fajr, timezone);
       const dhuhrFormatted = formatPrayerTime(schedule.dhuhr, timezone);
       const asrFormatted = formatPrayerTime(schedule.asr, timezone);
+      const maghribFormatted = formatPrayerTime(schedule.maghrib, timezone);
+      const ishaFormatted = formatPrayerTime(schedule.isha, timezone);
 
       // Send immediate location confirmation reply
       try {
@@ -97,7 +105,7 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
           to: fromPhoneNumber,
           type: 'text',
           text: {
-            body: `✅ Location set successfully!\n\n📍 Timezone: ${timezone}\n\nToday's Schedule:\n• Fajr: ${fajrFormatted}\n• Dhuhr: ${dhuhrFormatted}\n• Asr: ${asrFormatted}\n\nNidaa will send quiet text reminders right when it's time to pray.`,
+            body: `✅ Location set successfully!\n\n📍 Timezone: ${timezone}\n\nToday's Schedule:\n• Fajr: ${fajrFormatted}\n• Dhuhr: ${dhuhrFormatted}\n• Asr: ${asrFormatted}\n• Maghrib: ${maghribFormatted}\n• Isha: ${ishaFormatted}\n\nNidaa will send quiet text reminders right when it's time to pray.`,
           },
         }, { headers });
         console.log(`[WhatsApp Webhook] Location confirmation sent to ${fromPhoneNumber}`);

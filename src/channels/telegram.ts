@@ -54,7 +54,11 @@ telegramBot.on('message:location', async (ctx) => {
   // Immediately schedule today's remaining prayer tasks
   for (const [prayerName, time] of Object.entries(schedule)) {
     const capitalizedName = prayerName.charAt(0).toUpperCase() + prayerName.slice(1);
-    await schedulePrayerTask(userId, capitalizedName, time as Date, userProfile.leadTimeMinutes);
+    try {
+      await schedulePrayerTask(userId, capitalizedName, time as Date, userProfile.leadTimeMinutes);
+    } catch (schedErr) {
+      console.error(`[Telegram] Error scheduling prayer task for ${capitalizedName}:`, (schedErr as Error).message);
+    }
   }
 
   const fajrFormatted = formatPrayerTime(schedule.fajr, timezone);

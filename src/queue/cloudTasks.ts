@@ -37,7 +37,6 @@ export async function schedulePrayerTask(
   }
 
   const client = getTasksClient();
-  const parent = client ? client.queuePath(config.gcp.projectId, config.gcp.location, config.gcp.queueName) : '';
   const url = `${config.baseUrl}/api/workers/dispatch-reminder`;
   const payload: ReminderJobPayload = {
     userId,
@@ -45,8 +44,9 @@ export async function schedulePrayerTask(
     targetTime: targetTime.toISOString(),
   };
 
-  if (client && config.gcp.projectId !== 'callerbot-dev') {
+  if (client && config.gcp.projectId && config.gcp.projectId !== 'callerbot-dev') {
     try {
+      const parent = client.queuePath(config.gcp.projectId, config.gcp.location, config.gcp.queueName);
       const scheduledEpochSeconds = Math.floor(scheduledTimeMs / 1000);
       const task = {
         httpRequest: {
