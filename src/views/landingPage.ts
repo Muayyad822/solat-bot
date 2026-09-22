@@ -497,14 +497,15 @@ export function getLandingPageHtml(telegramUrl: string, whatsappUrl: string): st
     }
 
     @media (max-width: 600px) {
+      header.navbar { padding: 12px 0; }
       .container { padding: 0 16px; }
       .brand { font-size: 18px; gap: 8px; }
       .brand img { width: 34px; height: 34px; }
       .nav-links { gap: 14px; }
       .nav-links a { font-size: 13px; }
 
-      .hero { padding: 50px 0 40px; }
-      h1.hero-title { font-size: 32px; word-break: break-word; overflow-wrap: break-word; }
+      .hero { padding: 115px 0 40px; }
+      h1.hero-title { font-size: 32px; line-height: 1.25; margin-top: 0; word-break: break-word; overflow-wrap: break-word; }
       p.hero-subtitle { font-size: 15px; }
       .cta-group { flex-direction: column; width: 100%; }
       .btn { width: 100%; }
@@ -512,11 +513,11 @@ export function getLandingPageHtml(telegramUrl: string, whatsappUrl: string): st
       .hero-bg-glow { width: 100%; max-width: 100vw; }
       .mockup-container { width: 100%; padding: 16px; }
 
-      .features-section { padding: 50px 0; }
+      .features-section { padding: 50px 0; scroll-margin-top: 70px; }
       .features-grid { grid-template-columns: 1fr; gap: 20px; }
       .feature-card { padding: 24px 20px; }
 
-      .pricing-section { padding: 50px 0; }
+      .pricing-section { padding: 50px 0; scroll-margin-top: 70px; }
       .pricing-grid { grid-template-columns: 1fr; gap: 24px; }
       .pricing-card { padding: 28px 20px; }
 
