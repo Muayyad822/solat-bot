@@ -144,10 +144,10 @@ export function getPrivacyPageHtml(): string {
     
     <p><strong>Nidaa</strong> ("we", "our", or "us") respects your privacy. This Privacy Policy explains how we collect, use, and protect your information when you interact with the Nidaa bot on Telegram and WhatsApp.</p>
 
-    <h2>1. Information We Collect</h2>
+    <h2>1. Information We Collect & Anonymization</h2>
     <ul>
-      <li><strong>Location Data:</strong> When you share your location with Nidaa, we process your latitude and longitude to determine your geographic timezone and compute accurate prayer times.</li>
-      <li><strong>Account Identifiers:</strong> We store your Telegram Chat ID or WhatsApp Phone Number strictly to deliver prayer notifications to your device.</li>
+      <li><strong>Anonymized Location Data:</strong> When you share your location with Nidaa, your GPS coordinates are automatically coarsened/rounded to 2 decimal places (~1km resolution). This allows us to determine your solar timezone and prayer schedule while ensuring your exact pinpoint location (house or building) is never tracked or stored.</li>
+      <li><strong>Account Identifiers:</strong> We store your Telegram Chat ID or WhatsApp Phone Number solely to deliver prayer notifications to your device. We do NOT collect names, profile photos, or chat messages.</li>
     </ul>
 
     <h2>2. How We Use Information</h2>
@@ -157,10 +157,15 @@ export function getPrivacyPageHtml(): string {
     </ul>
 
     <h2>3. Data Sharing and Protection</h2>
-    <p>We <strong>never sell, share, rent, or trade</strong> your personal information or location data with third parties or advertising networks. Your data is used exclusively to provide the Nidaa prayer reminder service.</p>
+    <p>We <strong>never sell, share, rent, or trade</strong> your personal information or location data with third parties or advertising networks. Communication in transit is encrypted via HTTPS/TLS 1.3, and database storage is encrypted at rest using AES-256 encryption.</p>
 
-    <h2>4. Data Retention and Deletion</h2>
-    <p>You can request deletion of your stored location preferences at any time by stopping the bot or contacting support. Your data will be permanently purged upon request.</p>
+    <h2>4. Data Retention & Instant Right to Erasure</h2>
+    <p>You have full ownership of your data. You can instantly and permanently delete all your stored profile data from our servers at any time:</p>
+    <ul>
+      <li><strong>On WhatsApp:</strong> Send a text message containing <code>STOP</code> or <code>DELETE</code>.</li>
+      <li><strong>On Telegram:</strong> Send the <code>/delete</code> command.</li>
+    </ul>
+    <p>Upon receiving the deletion command, your data will be immediately and permanently purged from our database.</p>
 
     <h2>5. Contact Us</h2>
     <p>If you have questions about this Privacy Policy, please reach out to the Nidaa support team.</p>

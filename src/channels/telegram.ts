@@ -17,12 +17,24 @@ telegramBot.command('start', async (ctx) => {
     `*Nidaa*\n` +
     `_The gentle call to prayer. Your silent mu’adhin._\n\n` +
     `Assalamu Alaikum! Welcome to *Nidaa*, quiet, peaceful text reminders right when it's time to pray.\n\n` +
-    `Nidaa provides discreet reminders ideal for office, meeting, or silent environments—helping you stay connected without loud alarms.\n\n` +
+    `🔒 *Privacy First:* Your location is anonymized (rounded to ~1km resolution) and used strictly for prayer calculations. You can delete your data anytime by sending /delete.\n\n` +
     `Please tap the button below to share your location so we can calculate accurate prayer times for your area.`,
     {
       parse_mode: 'Markdown',
       reply_markup: locationKeyboard,
     }
+  );
+});
+
+// /delete Command Handler
+telegramBot.command('delete', async (ctx) => {
+  const userId = `tg_${ctx.from?.id}`;
+  await userRepository.deleteUser(userId);
+  await ctx.reply(
+    `🗑️ *Data Deleted Successfully*\n\n` +
+    `Your location and schedule data have been permanently removed from Nidaa. You will no longer receive prayer reminders.\n\n` +
+    `Send /start anytime if you wish to re-subscribe.`,
+    { parse_mode: 'Markdown' }
   );
 });
 
@@ -32,14 +44,18 @@ telegramBot.on('message:location', async (ctx) => {
   const userId = `tg_${ctx.from.id}`;
   const chatId = ctx.from.id.toString();
 
-  const { timezone, schedule } = calculateDailyPrayers(latitude, longitude);
+  // Coarsen coordinates to ~1km accuracy for user privacy (2 decimal places)
+  const coarsenedLat = Math.round(latitude * 100) / 100;
+  const coarsenedLng = Math.round(longitude * 100) / 100;
+
+  const { timezone, schedule } = calculateDailyPrayers(coarsenedLat, coarsenedLng);
 
   const userProfile: UserProfile = {
     id: userId,
     platform: 'telegram',
     chatId,
-    latitude,
-    longitude,
+    latitude: coarsenedLat,
+    longitude: coarsenedLng,
     timezone,
     calculationMethod: 'MuslimWorldLeague',
     leadTimeMinutes: 0,
@@ -69,14 +85,16 @@ telegramBot.on('message:location', async (ctx) => {
 
   await ctx.reply(
     `✅ *Location set successfully!*\n\n` +
-    `📍 Timezone: *${timezone}*\n\n` +
+    `📍 Timezone: *${timezone}*\n` +
+    `🔒 Privacy: *Coordinates anonymized (~1km resolution)*\n\n` +
     `*Today's Schedule:*\n` +
     `• Fajr: ${fajrFormatted}\n` +
     `• Dhuhr: ${dhuhrFormatted}\n` +
     `• Asr: ${asrFormatted}\n` +
     `• Maghrib: ${maghribFormatted}\n` +
     `• Isha: ${ishaFormatted}\n\n` +
-    `Nidaa will send gentle text reminders right when it's time to pray.`,
+    `Nidaa will send gentle text reminders right when it's time to pray.\n\n` +
+    `_(Tip: Send /delete anytime to permanently delete your data)._`,
     { parse_mode: 'Markdown' }
   );
 });

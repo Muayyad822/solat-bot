@@ -637,8 +637,8 @@ export function getLandingPageHtml(telegramUrl: string, whatsappUrl: string): st
           <div class="feature-icon-wrapper">
             <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
           </div>
-          <h3 class="feature-title">Privacy Guaranteed</h3>
-          <p class="feature-desc">We respect your privacy. Coordinates are stored securely only to compute prayer times. No tracking, no ads, no data selling.</p>
+          <h3 class="feature-title">Privacy & Anonymization</h3>
+          <p class="feature-desc">GPS coordinates are automatically coarsened to ~1km resolution to protect your exact pinpoint location privacy. Delete all your data permanently anytime by texting "STOP" or sending /delete.</p>
         </div>
 
         <!-- Feature 6: Chat / Multi-platform SVG -->

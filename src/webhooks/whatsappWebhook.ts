@@ -61,16 +61,20 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
     // 1. Handle incoming Location payload
     if (message.type === 'location') {
       const { latitude, longitude } = message.location;
-      console.log(`[WhatsApp Webhook] Received location from ${fromPhoneNumber}: Lat ${latitude}, Lng ${longitude}`);
+      // Coarsen coordinates to ~1km accuracy for user privacy (2 decimal places)
+      const coarsenedLat = Math.round(latitude * 100) / 100;
+      const coarsenedLng = Math.round(longitude * 100) / 100;
+
+      console.log(`[WhatsApp Webhook] Received location from ${fromPhoneNumber}: Raw (Lat ${latitude}, Lng ${longitude}) -> Coarsened (Lat ${coarsenedLat}, Lng ${coarsenedLng})`);
       
-      const { timezone, schedule } = calculateDailyPrayers(latitude, longitude);
+      const { timezone, schedule } = calculateDailyPrayers(coarsenedLat, coarsenedLng);
 
       const userProfile: UserProfile = {
         id: userId,
         platform: 'whatsapp',
         chatId: fromPhoneNumber,
-        latitude,
-        longitude,
+        latitude: coarsenedLat,
+        longitude: coarsenedLng,
         timezone,
         calculationMethod: 'MuslimWorldLeague',
         leadTimeMinutes: 0,
@@ -105,7 +109,7 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
           to: fromPhoneNumber,
           type: 'text',
           text: {
-            body: `✅ Location set successfully!\n\n📍 Timezone: ${timezone}\n\nToday's Schedule:\n• Fajr: ${fajrFormatted}\n• Dhuhr: ${dhuhrFormatted}\n• Asr: ${asrFormatted}\n• Maghrib: ${maghribFormatted}\n• Isha: ${ishaFormatted}\n\nNidaa will send quiet text reminders right when it's time to pray.`,
+            body: `✅ Location set successfully!\n\n📍 Timezone: ${timezone}\n🔒 Privacy: Coordinates anonymized (~1km resolution)\n\nToday's Schedule:\n• Fajr: ${fajrFormatted}\n• Dhuhr: ${dhuhrFormatted}\n• Asr: ${asrFormatted}\n• Maghrib: ${maghribFormatted}\n• Isha: ${ishaFormatted}\n\nNidaa will send quiet text reminders right when it's time to pray.\n\n(Tip: Text "STOP" or "DELETE" anytime to permanently delete your data).`,
           },
         }, { headers });
         console.log(`[WhatsApp Webhook] Location confirmation sent to ${fromPhoneNumber}`);
@@ -113,8 +117,29 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
         console.error(`[WhatsApp Webhook] Error sending location confirmation:`, (sendErr as any).response?.data || (sendErr as Error).message);
       }
     } 
-    // 2. Handle Text messages (e.g. "Hi", "Start")
+    // 2. Handle Text messages (e.g. "Hi", "STOP", "/delete")
     else if (message.type === 'text') {
+      const textBody = message.text?.body?.trim().toUpperCase() || '';
+      
+      // Data Deletion Command
+      if (['STOP', 'DELETE', '/DELETE', 'UNSUBSCRIBE', 'REMOVE'].includes(textBody)) {
+        console.log(`[WhatsApp Webhook] Deletion request received from ${fromPhoneNumber}. Wiping profile...`);
+        await userRepository.deleteUser(userId);
+        try {
+          await axios.post(replyUrl, {
+            messaging_product: 'whatsapp',
+            to: fromPhoneNumber,
+            type: 'text',
+            text: {
+              body: `🗑️ Your location and schedule data have been permanently deleted from Nidaa.\n\nYou will no longer receive prayer reminders. If you wish to re-subscribe in the future, simply text "Hi".`,
+            },
+          }, { headers });
+        } catch (sendErr) {
+          console.error(`[WhatsApp Webhook] Error sending deletion response:`, (sendErr as any).response?.data || (sendErr as Error).message);
+        }
+        return;
+      }
+
       console.log(`[WhatsApp Webhook] Received text "${message.text?.body}" from ${fromPhoneNumber}. Sending welcome message...`);
       try {
         const replyRes = await axios.post(replyUrl, {
@@ -122,7 +147,7 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
           to: fromPhoneNumber,
           type: 'text',
           text: {
-            body: `Assalamu Alaikum! Welcome to Nidaa, your silent mu'adhin.\n\nPlease share your location (tap 📎 Paperclip > Location > Send Your Current Location) so we can calculate accurate prayer times for your area.`,
+            body: `Assalamu Alaikum! Welcome to Nidaa, your silent mu'adhin.\n\n🔒 Privacy First: Your location is anonymized to ~1km and used solely to calculate prayer times. You can permanently delete your data anytime by texting "STOP" or "DELETE".\n\nPlease share your location (tap 📎 Paperclip > Location > Send Your Current Location) so we can set up your prayer schedule.`,
           },
         }, { headers });
         console.log(`[WhatsApp Webhook] Welcome reply sent to ${fromPhoneNumber}, Message ID:`, replyRes.data?.messages?.[0]?.id);

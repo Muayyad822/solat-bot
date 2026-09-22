@@ -227,6 +227,24 @@ export class UserRepository {
     await this.saveUser(user);
   }
 
+  async deleteUser(id: string): Promise<boolean> {
+    memoryUserStore.delete(id);
+    const mDb = await getMongoDb();
+    if (mDb) {
+      try {
+        await mDb.collection(this.collectionName).deleteOne({ id });
+        console.log(`[UserRepository] User ${id} deleted from MongoDB Atlas.`);
+      } catch (err) {
+        console.warn('[MongoDB] Delete failed:', (err as Error).message);
+      }
+    }
+    try {
+      const db = getFirestore();
+      await db.collection(this.collectionName).doc(id).delete();
+    } catch (err) {}
+    return true;
+  }
+
   async getUserStats(): Promise<UserStats> {
     const allUsers = await this.getAllUsers();
     const telegramUsers = allUsers.filter(u => u.platform === 'telegram').length;
