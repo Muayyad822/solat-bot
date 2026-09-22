@@ -420,6 +420,7 @@ export function getAdminPageHtml(initialStats: UserStats): string {
             <th>User ID</th>
             <th>Platform</th>
             <th>Chat ID / Phone</th>
+            <th>Location</th>
             <th>Coordinates (~1km)</th>
             <th>Timezone</th>
             <th>Method</th>
@@ -495,7 +496,8 @@ export function getAdminPageHtml(initialStats: UserStats): string {
           const matchId = (u.id || '').toLowerCase().includes(searchQuery);
           const matchChatId = (u.chatId || '').toLowerCase().includes(searchQuery);
           const matchTz = (u.timezone || '').toLowerCase().includes(searchQuery);
-          return matchId || matchChatId || matchTz;
+          const matchLoc = (u.locationName || u.city || u.country || '').toLowerCase().includes(searchQuery);
+          return matchId || matchChatId || matchTz || matchLoc;
         }
         return true;
       });
@@ -513,19 +515,25 @@ export function getAdminPageHtml(initialStats: UserStats): string {
       // 3. Update Table DOM
       const tableBody = document.getElementById('userTableBody');
       if (paginatedUsers.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 30px; color: #94A9C4;">No matching users found.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 30px; color: #94A9C4;">No matching users found.</td></tr>';
       } else {
-        tableBody.innerHTML = paginatedUsers.map(u => \`
+        tableBody.innerHTML = paginatedUsers.map(u => {
+          const locName = u.locationName || (u.city && u.country ? u.city + ', ' + u.country : u.city || u.country);
+          const cleanTz = u.timezone ? u.timezone.replace('_', ' ') : 'Location Set';
+          const displayLoc = locName || cleanTz;
+          return \`
           <tr>
             <td><strong>\${u.id}</strong></td>
             <td><span class="badge \${u.platform}">\${u.platform.toUpperCase()}</span></td>
             <td><code>\${u.chatId}</code></td>
+            <td><strong>\${displayLoc}</strong></td>
             <td>\${u.latitude ? u.latitude.toFixed(2) : 'N/A'}, \${u.longitude ? u.longitude.toFixed(2) : 'N/A'}</td>
             <td>\${u.timezone || 'N/A'}</td>
             <td>\${u.calculationMethod || 'MWL'}</td>
             <td>\${new Date(u.createdAt).toLocaleString()}</td>
           </tr>
-        \`).join('');
+        \`;
+        }).join('');
       }
 
       // 4. Update Pagination UI Controls

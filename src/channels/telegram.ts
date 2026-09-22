@@ -2,6 +2,7 @@ import { Bot, Keyboard } from 'grammy';
 import { config } from '../config/env.js';
 import { userRepository, UserProfile } from '../db/userRepository.js';
 import { calculateDailyPrayers, getRandomReflection, formatPrayerTime } from '../domain/prayerTimes.js';
+import { resolveLocationDetails } from '../domain/geocoding.js';
 import { schedulePrayerTask } from '../queue/cloudTasks.js';
 
 export const telegramBot = new Bot(config.telegramBotToken || 'DUMMY_TOKEN_FOR_DEV');
@@ -44,11 +45,15 @@ telegramBot.on('message:location', async (ctx) => {
   const userId = `tg_${ctx.from.id}`;
   const chatId = ctx.from.id.toString();
 
+  // Reverse geocode to resolve exact location details (city, state, country, timezone)
+  const locDetails = await resolveLocationDetails(latitude, longitude);
+
   // Coarsen coordinates to ~1km accuracy for user privacy (2 decimal places)
   const coarsenedLat = Math.round(latitude * 100) / 100;
   const coarsenedLng = Math.round(longitude * 100) / 100;
 
-  const { timezone, schedule } = calculateDailyPrayers(coarsenedLat, coarsenedLng);
+  const timezone = locDetails.timezone;
+  const { schedule } = calculateDailyPrayers(coarsenedLat, coarsenedLng);
 
   const userProfile: UserProfile = {
     id: userId,
@@ -57,6 +62,10 @@ telegramBot.on('message:location', async (ctx) => {
     latitude: coarsenedLat,
     longitude: coarsenedLng,
     timezone,
+    city: locDetails.city,
+    state: locDetails.state,
+    country: locDetails.country,
+    locationName: locDetails.locationName,
     calculationMethod: 'MuslimWorldLeague',
     leadTimeMinutes: 0,
     isActive: true,
@@ -83,9 +92,12 @@ telegramBot.on('message:location', async (ctx) => {
   const maghribFormatted = formatPrayerTime(schedule.maghrib, timezone);
   const ishaFormatted = formatPrayerTime(schedule.isha, timezone);
 
+  const displayLocation = locDetails.locationName || 'Detected Location';
+
   await ctx.reply(
     `✅ *Location set successfully!*\n\n` +
-    `📍 Timezone: *${timezone}*\n` +
+    `📍 Location: *${displayLocation}*\n` +
+    `🕒 Timezone: *${timezone}*\n` +
     `🔒 Privacy: *Coordinates anonymized (~1km resolution)*\n\n` +
     `*Today's Schedule:*\n` +
     `• Fajr: ${fajrFormatted}\n` +

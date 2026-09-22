@@ -2,6 +2,7 @@ import dns from 'dns';
 import { getFirestore } from './firebase.js';
 import { MongoClient, Db } from 'mongodb';
 import { config } from '../config/env.js';
+import { getFallbackLocationName } from '../domain/geocoding.js';
 
 // Ensure reliable public DNS servers for MongoDB Atlas SRV lookups on Windows
 try {
@@ -17,6 +18,10 @@ export interface UserProfile {
   latitude: number;
   longitude: number;
   timezone: string;          // e.g. "Africa/Lagos", "Asia/Kuala_Lumpur"
+  city?: string;             // e.g. "Abuja", "Ibadan", "Kano"
+  state?: string;            // e.g. "Federal Capital Territory", "Oyo"
+  country?: string;          // e.g. "Nigeria"
+  locationName?: string;     // e.g. "Abuja, Federal Capital Territory, Nigeria"
   calculationMethod: string; // e.g. "MuslimWorldLeague"
   leadTimeMinutes: number;   // 0 = exact time, 5 = 5 mins before
   isActive: boolean;
@@ -247,6 +252,14 @@ export class UserRepository {
 
   async getUserStats(): Promise<UserStats> {
     const allUsers = await this.getAllUsers();
+    
+    // Ensure all existing users have a valid locationName populated
+    for (const u of allUsers) {
+      if (!u.locationName) {
+        u.locationName = getFallbackLocationName(u.timezone);
+      }
+    }
+
     const telegramUsers = allUsers.filter(u => u.platform === 'telegram').length;
     const whatsappUsers = allUsers.filter(u => u.platform === 'whatsapp').length;
     return {

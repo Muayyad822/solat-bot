@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { config } from '../config/env.js';
 import { userRepository, UserProfile } from '../db/userRepository.js';
 import { calculateDailyPrayers, formatPrayerTime } from '../domain/prayerTimes.js';
+import { resolveLocationDetails } from '../domain/geocoding.js';
 import { schedulePrayerTask } from '../queue/cloudTasks.js';
 import { sendWhatsAppContactCard } from '../channels/whatsapp.js';
 import axios from 'axios';
@@ -62,13 +63,18 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
     // 1. Handle incoming Location payload
     if (message.type === 'location') {
       const { latitude, longitude } = message.location;
+
+      // Reverse geocode to resolve exact location details (city, state, country, timezone)
+      const locDetails = await resolveLocationDetails(latitude, longitude);
+
       // Coarsen coordinates to ~1km accuracy for user privacy (2 decimal places)
       const coarsenedLat = Math.round(latitude * 100) / 100;
       const coarsenedLng = Math.round(longitude * 100) / 100;
 
-      console.log(`[WhatsApp Webhook] Received location from ${fromPhoneNumber}: Raw (Lat ${latitude}, Lng ${longitude}) -> Coarsened (Lat ${coarsenedLat}, Lng ${coarsenedLng})`);
+      console.log(`[WhatsApp Webhook] Received location from ${fromPhoneNumber}: Raw (Lat ${latitude}, Lng ${longitude}) -> Resolved "${locDetails.locationName}" (${locDetails.timezone})`);
       
-      const { timezone, schedule } = calculateDailyPrayers(coarsenedLat, coarsenedLng);
+      const timezone = locDetails.timezone;
+      const { schedule } = calculateDailyPrayers(coarsenedLat, coarsenedLng);
 
       const userProfile: UserProfile = {
         id: userId,
@@ -77,6 +83,10 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
         latitude: coarsenedLat,
         longitude: coarsenedLng,
         timezone,
+        city: locDetails.city,
+        state: locDetails.state,
+        country: locDetails.country,
+        locationName: locDetails.locationName,
         calculationMethod: 'MuslimWorldLeague',
         leadTimeMinutes: 0,
         isActive: true,
@@ -103,6 +113,8 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
       const maghribFormatted = formatPrayerTime(schedule.maghrib, timezone);
       const ishaFormatted = formatPrayerTime(schedule.isha, timezone);
 
+      const displayLocation = locDetails.locationName || 'Detected Location';
+
       // Send immediate location confirmation reply
       try {
         await axios.post(replyUrl, {
@@ -110,7 +122,7 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
           to: fromPhoneNumber,
           type: 'text',
           text: {
-            body: `✅ Location set successfully!\n\n📍 Timezone: ${timezone}\n🔒 Privacy: Coordinates anonymized (~1km resolution)\n\nToday's Schedule:\n• Fajr: ${fajrFormatted}\n• Dhuhr: ${dhuhrFormatted}\n• Asr: ${asrFormatted}\n• Maghrib: ${maghribFormatted}\n• Isha: ${ishaFormatted}\n\nNidaa will send quiet text reminders right when it's time to pray.\n\n(Tip: Tap the contact card below to save Nidaa Bot to your phone!)`,
+            body: `✅ Location set successfully!\n\n📍 Location: ${displayLocation}\n🕒 Timezone: ${timezone}\n🔒 Privacy: Coordinates anonymized (~1km resolution)\n\nToday's Schedule:\n• Fajr: ${fajrFormatted}\n• Dhuhr: ${dhuhrFormatted}\n• Asr: ${asrFormatted}\n• Maghrib: ${maghribFormatted}\n• Isha: ${ishaFormatted}\n\nNidaa will send quiet text reminders right when it's time to pray.\n\n(Tip: Tap the contact card below to save Nidaa Bot to your phone!)`,
           },
         }, { headers });
         console.log(`[WhatsApp Webhook] Location confirmation sent to ${fromPhoneNumber}`);
