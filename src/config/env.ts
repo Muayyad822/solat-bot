@@ -19,4 +19,5 @@ export const config = {
   whatsappBotUrl: process.env.WHATSAPP_BOT_URL || 'https://wa.me/2349017109582?text=Assalamu%20alaikum%20Nidaa%2C%20I%20would%20like%20to%20get%20prayer%20reminders',
   mongodbUri: process.env.MONGODB_URI || '',
   firebaseServiceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT_PATH || '',
+  adminPasscode: process.env.ADMIN_PASSCODE || 'muayyad@822',
 };

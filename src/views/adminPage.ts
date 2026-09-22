@@ -214,9 +214,12 @@ export function getAdminPageHtml(initialStats: UserStats): string {
           <a href="/" class="nav-back">← Back to Main Landing Page</a>
         </div>
       </div>
-      <div class="live-indicator">
-        <span class="pulse-dot"></span>
-        <span>Live Auto-Refreshing</span>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div class="live-indicator">
+          <span class="pulse-dot"></span>
+          <span>Live Auto-Refreshing</span>
+        </div>
+        <a href="/admin/logout" style="color: #FF5757; text-decoration: none; font-size: 13px; font-weight: 600; background: rgba(255, 87, 87, 0.12); padding: 8px 14px; border-radius: 30px; border: 1px solid rgba(255, 87, 87, 0.3);">🔒 Logout</a>
       </div>
     </div>
 

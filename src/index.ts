@@ -11,9 +11,11 @@ import { getLandingPageHtml } from './views/landingPage.js';
 import { getAdminPageHtml } from './views/adminPage.js';
 import { getPrivacyPageHtml } from './views/privacyPage.js';
 import { getTermsPageHtml } from './views/termsPage.js';
+import { getAdminLoginPageHtml } from './views/adminLoginPage.js';
 
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Serve static assets from 'public' directory (e.g. /nidaaIcon.jpg)
 app.use(express.static(path.join(process.cwd(), 'public')));
@@ -41,14 +43,48 @@ app.get('/health', async (req, res) => {
   });
 });
 
-// Admin Stats JSON Endpoint
+function isAuthorizedAdmin(req: express.Request): boolean {
+  const cookieHeader = req.headers.cookie || '';
+  if (cookieHeader.includes('nidaa_admin_auth=1')) return true;
+  const authHeader = req.headers.authorization || '';
+  if (authHeader === `Bearer ${config.adminPasscode}`) return true;
+  return false;
+}
+
+// Admin Authentication Endpoints
+app.get('/admin/login', (req, res) => {
+  if (isAuthorizedAdmin(req)) return res.redirect('/admin');
+  res.send(getAdminLoginPageHtml());
+});
+
+app.post('/admin/login', (req, res) => {
+  const { passcode } = req.body || {};
+  if (passcode === config.adminPasscode) {
+    res.setHeader('Set-Cookie', 'nidaa_admin_auth=1; Path=/; HttpOnly; SameSite=Lax');
+    return res.redirect('/admin');
+  }
+  res.status(401).send(getAdminLoginPageHtml('❌ Invalid passcode. Please try again.'));
+});
+
+app.get('/admin/logout', (req, res) => {
+  res.setHeader('Set-Cookie', 'nidaa_admin_auth=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
+  res.redirect('/admin/login');
+});
+
+// Protected Admin Stats JSON Endpoint
 app.get('/api/admin/stats', async (req, res) => {
+  if (!isAuthorizedAdmin(req)) {
+    return res.status(401).json({ error: 'Unauthorized access. Valid admin passcode required.' });
+  }
   const stats = await userRepository.getUserStats();
   res.status(200).json(stats);
 });
 
-// Visual Admin Dashboard HTML Endpoint with Real-Time Auto-Refresh
+// Protected Admin Dashboard HTML Endpoint
 app.get('/admin', async (req, res) => {
+  if (!isAuthorizedAdmin(req)) {
+    return res.send(getAdminLoginPageHtml());
+  }
   const stats = await userRepository.getUserStats();
   res.send(getAdminPageHtml(stats));
 });
