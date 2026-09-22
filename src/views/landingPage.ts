@@ -25,8 +25,9 @@ export function getLandingPageHtml(telegramUrl: string, whatsappUrl: string): st
       padding: 0;
     }
 
-    /* Custom Scrollbar */
+    /* Custom Scrollbar & Smooth Scrolling */
     html {
+      scroll-behavior: smooth;
       scrollbar-width: thin;
       scrollbar-color: var(--bg-surface) var(--bg-primary);
     }
@@ -49,12 +50,9 @@ export function getLandingPageHtml(telegramUrl: string, whatsappUrl: string): st
       background: var(--accent-primary);
     }
 
-    html, body {
+    body {
       max-width: 100%;
       overflow-x: hidden;
-    }
-
-    body {
       background-color: var(--bg-primary);
       color: var(--text-primary);
       font-family: var(--font-family);
@@ -78,11 +76,14 @@ export function getLandingPageHtml(telegramUrl: string, whatsappUrl: string): st
 
     /* --- Navbar --- */
     header.navbar {
-      position: sticky;
+      position: fixed;
       top: 0;
-      z-index: 100;
-      background: rgba(11, 25, 44, 0.85);
-      backdrop-filter: blur(12px);
+      left: 0;
+      width: 100%;
+      z-index: 1000;
+      background: rgba(11, 25, 44, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border-color);
       padding: 16px 0;
     }
@@ -130,7 +131,7 @@ export function getLandingPageHtml(telegramUrl: string, whatsappUrl: string): st
 
     /* --- Hero Section --- */
     .hero {
-      padding: 90px 0 70px;
+      padding: 140px 0 70px;
       text-align: center;
       position: relative;
     }
@@ -309,6 +310,7 @@ export function getLandingPageHtml(telegramUrl: string, whatsappUrl: string): st
     .features-section {
       padding: 80px 0;
       border-top: 1px solid var(--border-color);
+      scroll-margin-top: 80px;
     }
 
     .section-title {
@@ -387,6 +389,7 @@ export function getLandingPageHtml(telegramUrl: string, whatsappUrl: string): st
       padding: 80px 0;
       border-top: 1px solid var(--border-color);
       background: rgba(22, 46, 77, 0.3);
+      scroll-margin-top: 80px;
     }
 
     .pricing-grid {
