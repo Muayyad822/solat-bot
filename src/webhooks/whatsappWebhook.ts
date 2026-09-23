@@ -7,7 +7,26 @@ import { schedulePrayerTask } from '../queue/cloudTasks.js';
 import { sendWhatsAppContactCard } from '../channels/whatsapp.js';
 import axios from 'axios';
 
+// Tracks random text message timestamps per user (10-min window limit)
+const randomMessageHistory = new Map<string, number[]>();
+
+function checkRandomTextRateLimit(userId: string, windowMs: number = 10 * 60 * 1000, maxAllowed: number = 2): { isLimited: boolean; count: number } {
+  const now = Date.now();
+  const history = randomMessageHistory.get(userId) || [];
+  const validTimestamps = history.filter(ts => (now - ts) < windowMs);
+  
+  const currentCount = validTimestamps.length + 1;
+  validTimestamps.push(now);
+  randomMessageHistory.set(userId, validTimestamps);
+
+  return {
+    isLimited: currentCount > maxAllowed,
+    count: currentCount,
+  };
+}
+
 // GET verification for Meta Webhook Registration
+
 export const verifyWhatsAppWebhook = (req: Request, res: Response) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
@@ -208,7 +227,30 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
           return;
         }
 
-        // Response B3: General / Random text from registered user
+        // Response B3: General / Random text from registered user (Rate-limited: Max 2 per 10 mins)
+        const rateCheck = checkRandomTextRateLimit(userId, 10 * 60 * 1000, 2);
+
+        if (rateCheck.isLimited) {
+          if (rateCheck.count === 3) {
+            console.log(`[WhatsApp Webhook] User ${fromPhoneNumber} exceeded 2 random texts in 10 mins. Sending 1-time rate limit notice.`);
+            try {
+              await axios.post(replyUrl, {
+                messaging_product: 'whatsapp',
+                to: fromPhoneNumber,
+                type: 'text',
+                text: {
+                  body: `Nidaa is a quiet prayer reminder assistant. 🕌\n\nTo keep messages serene and prevent spam, random message replies are paused for 10 minutes.\n\n• You can still tap check-in buttons anytime\n• Reply "Schedule" for today's prayer times`,
+                },
+              }, { headers });
+            } catch (sendErr) {
+              console.error(`[WhatsApp Webhook] Error sending rate limit notice:`, (sendErr as any).response?.data || (sendErr as Error).message);
+            }
+          } else {
+            console.log(`[WhatsApp Webhook] User ${fromPhoneNumber} rate-limited (${rateCheck.count} msgs in 10 mins). Silently dropping text.`);
+          }
+          return;
+        }
+
         try {
           const displayLoc = existingUser.locationName || 'your area';
           await axios.post(replyUrl, {
@@ -216,7 +258,7 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
             to: fromPhoneNumber,
             type: 'text',
             text: {
-              body: ` Nidaa is active for ${displayLoc}.\n\nYou will receive quiet text reminders at prayer times and interactive check-ins 30 minutes after.\n\n• Reply "Schedule" to view today's times\n• Send a new location pin to update your location\n• Reply "STOP" to delete your data`,
+              body: `Nidaa is active for ${displayLoc}.\n\nYou will receive quiet text reminders at prayer times and interactive check-ins 30 minutes after.\n\n• Reply "Schedule" to view today's times\n• Send a new location pin to update your location\n• Reply "STOP" to delete your data`,
             },
           }, { headers });
         } catch (sendErr) {
