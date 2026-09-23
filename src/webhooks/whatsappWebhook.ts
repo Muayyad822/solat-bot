@@ -133,11 +133,15 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
         console.error(`[WhatsApp Webhook] Error sending location confirmation:`, (sendErr as any).response?.data || (sendErr as Error).message);
       }
     } 
-    // 2. Handle Text messages (e.g. "Hi", "STOP", "/delete")
+    // 2. Handle Text messages (e.g. "Hi", "Ameen", "Schedule", "STOP")
     else if (message.type === 'text') {
-      const textBody = message.text?.body?.trim().toUpperCase() || '';
+      const rawText = message.text?.body?.trim() || '';
+      const textBody = rawText.toUpperCase();
+
+      // Check if sender is an existing registered user
+      const existingUser = await userRepository.getUserById(userId);
       
-      // Data Deletion Command
+      // A. Data Deletion Command
       if (['STOP', 'DELETE', '/DELETE', 'UNSUBSCRIBE', 'REMOVE'].includes(textBody)) {
         console.log(`[WhatsApp Webhook] Deletion request received from ${fromPhoneNumber}. Wiping profile...`);
         await userRepository.deleteUser(userId);
@@ -156,14 +160,80 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
         return;
       }
 
-      console.log(`[WhatsApp Webhook] Received text "${message.text?.body}" from ${fromPhoneNumber}. Sending welcome message...`);
+      // B. Registered Active User Flow
+      if (existingUser && existingUser.isActive) {
+        console.log(`[WhatsApp Webhook] Received text "${rawText}" from registered user ${fromPhoneNumber}`);
+
+        // Response B1: "Ameen" / Gratitude keywords
+        const isGratitude = ['AMEEN', 'AMIN', 'JAZAKALLAH', 'JAZAKALLAHU KHAIR', 'SHUKRAN', 'THANKS', 'THANK YOU'].some(w => textBody.includes(w));
+        if (isGratitude) {
+          try {
+            await axios.post(replyUrl, {
+              messaging_product: 'whatsapp',
+              to: fromPhoneNumber,
+              type: 'text',
+              text: {
+                body: `Wa iyyakum!`,
+              },
+            }, { headers });
+          } catch (sendErr) {
+            console.error(`[WhatsApp Webhook] Error sending gratitude response:`, (sendErr as any).response?.data || (sendErr as Error).message);
+          }
+          return;
+        }
+
+        // Response B2: Schedule Request
+        const isScheduleReq = ['SCHEDULE', 'TIMES', 'PRAYER', 'PRAYERS', 'TODAY'].includes(textBody);
+        if (isScheduleReq) {
+          const { schedule } = calculateDailyPrayers(existingUser.latitude, existingUser.longitude);
+          const fajrFormatted = formatPrayerTime(schedule.fajr, existingUser.timezone);
+          const dhuhrFormatted = formatPrayerTime(schedule.dhuhr, existingUser.timezone);
+          const asrFormatted = formatPrayerTime(schedule.asr, existingUser.timezone);
+          const maghribFormatted = formatPrayerTime(schedule.maghrib, existingUser.timezone);
+          const ishaFormatted = formatPrayerTime(schedule.isha, existingUser.timezone);
+          const displayLoc = existingUser.locationName || 'Your Location';
+
+          try {
+            await axios.post(replyUrl, {
+              messaging_product: 'whatsapp',
+              to: fromPhoneNumber,
+              type: 'text',
+              text: {
+                body: `📍 Today's Prayer Schedule (${displayLoc}):\n\n• Fajr: ${fajrFormatted}\n• Dhuhr: ${dhuhrFormatted}\n• Asr: ${asrFormatted}\n• Maghrib: ${maghribFormatted}\n• Isha: ${ishaFormatted}\n\nNidaa will send quiet text reminders right when it's time to pray.`,
+              },
+            }, { headers });
+          } catch (sendErr) {
+            console.error(`[WhatsApp Webhook] Error sending schedule response:`, (sendErr as any).response?.data || (sendErr as Error).message);
+          }
+          return;
+        }
+
+        // Response B3: General / Random text from registered user
+        try {
+          const displayLoc = existingUser.locationName || 'your area';
+          await axios.post(replyUrl, {
+            messaging_product: 'whatsapp',
+            to: fromPhoneNumber,
+            type: 'text',
+            text: {
+              body: ` Nidaa is active for ${displayLoc}.\n\nYou will receive quiet text reminders at prayer times and interactive check-ins 30 minutes after.\n\n• Reply "Schedule" to view today's times\n• Send a new location pin to update your location\n• Reply "STOP" to delete your data`,
+            },
+          }, { headers });
+        } catch (sendErr) {
+          console.error(`[WhatsApp Webhook] Error sending active user guidance:`, (sendErr as any).response?.data || (sendErr as Error).message);
+        }
+        return;
+      }
+
+      // C. New User Flow (Not registered yet)
+      console.log(`[WhatsApp Webhook] Received text "${rawText}" from new user ${fromPhoneNumber}. Sending onboarding welcome...`);
       try {
         const replyRes = await axios.post(replyUrl, {
           messaging_product: 'whatsapp',
           to: fromPhoneNumber,
           type: 'text',
           text: {
-            body: `Assalamu Alaikum! Welcome to Nidaa, your silent mu'adhin.\n\n🔒 Privacy First: Your location is anonymized to ~1km and used solely to calculate prayer times. You can permanently delete your data anytime by texting "STOP" or "DELETE".\n\nPlease share your location (tap 📎 Paperclip > Location > Send Your Current Location) so we can set up your prayer schedule.`,
+            body: `Assalamu Alaikum! Welcome to Nidaa, your silent mu'adhin.\n\n Please share your location (tap 📎 Paperclip > Location > Send Your Current Location) so we can set up your prayer schedule.\n\n🔒 Privacy First: Your location is anonymized to ~1km and used solely to calculate prayer times. You can permanently delete your data anytime by texting "STOP" or "DELETE".`,
           },
         }, { headers });
         console.log(`[WhatsApp Webhook] Welcome reply sent to ${fromPhoneNumber}, Message ID:`, replyRes.data?.messages?.[0]?.id);
