@@ -93,3 +93,8 @@ export function calculateDailyPrayers(
 export function formatPrayerTime(date: Date, timezone: string): string {
   return DateTime.fromJSDate(date).setZone(timezone).toFormat('h:mm a');
 }
+
+export function getLocalDateString(date: Date = new Date(), timezone: string = 'UTC'): string {
+  return DateTime.fromJSDate(date).setZone(timezone).toFormat('yyyy-MM-dd');
+}
+

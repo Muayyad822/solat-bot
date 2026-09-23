@@ -174,6 +174,32 @@ export const handleWhatsAppWebhook = async (req: Request, res: Response) => {
         console.error(`[WhatsApp Webhook] Error sending welcome reply to ${fromPhoneNumber}:`, (sendErr as any).response?.data || (sendErr as Error).message);
       }
     }
+    // 3. Handle Interactive Button Replies ([ Prayed on time ], [ Prayed late ], [ Missed ])
+    else if (message.type === 'interactive') {
+      const buttonReply = message.interactive?.button_reply;
+      const replyId = buttonReply?.id || '';
+      const replyTitle = buttonReply?.title || '';
+      console.log(`[WhatsApp Webhook] Interactive reply from ${fromPhoneNumber}: "${replyTitle}" (ID: ${replyId})`);
+
+      let responseText = "Alhamdulillah! May Allah accept your prayer and grant you steadfastness. 🤲";
+      if (replyId.includes('late') || replyId.includes('some_late')) {
+        responseText = "May Allah reward your effort and bless your time! Strive to pray on time for maximum blessings. 🌙";
+      } else if (replyId.includes('missed')) {
+        responseText = "Don't be discouraged! Make up (Qada) your prayer as soon as possible and make Istighfar. May Allah make it easy for you. 🤲";
+      }
+
+      try {
+        await axios.post(replyUrl, {
+          messaging_product: 'whatsapp',
+          to: fromPhoneNumber,
+          type: 'text',
+          text: { body: responseText },
+        }, { headers });
+        console.log(`[WhatsApp Webhook] Sent feedback reply to interactive selection by ${fromPhoneNumber}`);
+      } catch (sendErr) {
+        console.error(`[WhatsApp Webhook] Error sending interactive feedback to ${fromPhoneNumber}:`, (sendErr as any).response?.data || (sendErr as Error).message);
+      }
+    }
   } catch (err) {
     console.error('[WhatsApp Webhook] Error processing incoming payload:', (err as Error).message);
   }

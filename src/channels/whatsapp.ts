@@ -72,6 +72,61 @@ export async function sendWhatsAppNotification(
   }
 }
 
+export async function sendWhatsAppInteractiveCheckin(
+  phoneNumber: string,
+  prayerName: string,
+  isOverallIsha: boolean = false
+): Promise<void> {
+  if (!config.whatsapp.phoneNumberId || !config.whatsapp.accessToken) {
+    console.warn(`[WhatsApp] Missing credentials. Mocking interactive check-in to ${phoneNumber}`);
+    console.log(`[WhatsApp Mock Checkin] Prayer: ${prayerName}, Overall: ${isOverallIsha}`);
+    return;
+  }
+
+  const url = `https://graph.facebook.com/v20.0/${config.whatsapp.phoneNumberId}/messages`;
+
+  const bodyText = isOverallIsha
+    ? `Assalamu Alaikum! 🌙\n\nHow was your overall Salah today?`
+    : `Assalamu Alaikum! 🕌\n\nDid you perform your ${prayerName} prayer?`;
+
+  const buttons = isOverallIsha
+    ? [
+        { type: 'reply', reply: { id: 'btn_all_ontime', title: 'Prayed all on time' } },
+        { type: 'reply', reply: { id: 'btn_some_late', title: 'Prayed (some late)' } },
+        { type: 'reply', reply: { id: 'btn_missed_some', title: 'Missed some' } },
+      ]
+    : [
+        { type: 'reply', reply: { id: `btn_${prayerName.toLowerCase()}_ontime`, title: 'Prayed on time' } },
+        { type: 'reply', reply: { id: `btn_${prayerName.toLowerCase()}_late`, title: 'Prayed late' } },
+        { type: 'reply', reply: { id: `btn_${prayerName.toLowerCase()}_missed`, title: 'Missed' } },
+      ];
+
+
+  const interactivePayload = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: phoneNumber,
+    type: 'interactive',
+    interactive: {
+      type: 'button',
+      body: { text: bodyText },
+      action: { buttons },
+    },
+  };
+
+  try {
+    const res = await axios.post(url, interactivePayload, {
+      headers: {
+        Authorization: `Bearer ${config.whatsapp.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    console.log(`[WhatsApp] Interactive check-in sent to ${phoneNumber}. Message ID:`, res.data?.messages?.[0]?.id);
+  } catch (err: any) {
+    console.error(`[WhatsApp] Failed to send interactive check-in to ${phoneNumber}:`, err.response?.data || err.message);
+  }
+}
+
 export async function sendWhatsAppContactCard(
   phoneNumber: string,
   customPhoneNumberId?: string
@@ -124,3 +179,4 @@ export async function sendWhatsAppContactCard(
     console.error(`[WhatsApp] Failed to send Contact Card to ${phoneNumber}:`, (err as any).response?.data || (err as Error).message);
   }
 }
+

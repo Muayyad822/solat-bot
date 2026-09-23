@@ -106,6 +106,8 @@ app.post('/api/webhooks/telegram', handleTelegramWebhook);
 app.get('/api/webhooks/whatsapp', verifyWhatsAppWebhook);
 app.post('/api/webhooks/whatsapp', handleWhatsAppWebhook);
 
+import { handleBroadcastCheckin } from './workers/broadcastCheckin.js';
+
 // Workers & Scheduler Endpoints
 app.post('/api/workers/daily-cron', runDailyCronJob);
 app.post('/api/workers/dispatch-reminder', handleDispatchReminder);
@@ -113,6 +115,8 @@ app.post('/api/workers/check-reminders', async (req, res) => {
   const count = await checkAndDispatchDueReminders();
   res.status(200).json({ status: 'success', dispatched: count });
 });
+app.post('/api/workers/broadcast-checkin', handleBroadcastCheckin);
+
 
 // Internal 1-minute self-healing background ticker
 setInterval(() => {

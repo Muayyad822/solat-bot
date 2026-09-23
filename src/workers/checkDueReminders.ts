@@ -1,7 +1,7 @@
 import { userRepository } from '../db/userRepository.js';
-import { calculateDailyPrayers, formatPrayerTime } from '../domain/prayerTimes.js';
+import { calculateDailyPrayers, formatPrayerTime, getLocalDateString } from '../domain/prayerTimes.js';
 import { sendTelegramNotification } from '../channels/telegram.js';
-import { sendWhatsAppNotification } from '../channels/whatsapp.js';
+import { sendWhatsAppNotification, sendWhatsAppInteractiveCheckin } from '../channels/whatsapp.js';
 
 export async function checkAndDispatchDueReminders(): Promise<number> {
   let dispatchedCount = 0;
@@ -10,24 +10,20 @@ export async function checkAndDispatchDueReminders(): Promise<number> {
     const now = new Date();
 
     for (const user of activeUsers) {
-      const todayStr = now.toISOString().split('T')[0];
+      const todayStr = getLocalDateString(now, user.timezone);
       const { schedule } = calculateDailyPrayers(user.latitude, user.longitude, now, user.calculationMethod as any);
 
       for (const [prayerKey, timeObj] of Object.entries(schedule)) {
         const prayerName = prayerKey.charAt(0).toUpperCase() + prayerKey.slice(1);
         const prayerTime = timeObj as Date;
 
-        // Apply lead time offset
+        // 1. Primary Prayer Time Reminder (Exact time with leadTime offset)
         const targetMs = prayerTime.getTime() - (user.leadTimeMinutes * 60 * 1000);
         const diffMinutes = (now.getTime() - targetMs) / (1000 * 60);
-
-        // Check if prayer time is due (between 0 and 5 minutes past target time)
-        // AND has not been sent today yet
         const lastSentDate = user.lastNotified?.[prayerName];
 
-        if (diffMinutes >= 0 && diffMinutes <= 5 && lastSentDate !== todayStr) {
+        if (diffMinutes >= 0 && diffMinutes <= 15 && lastSentDate !== todayStr) {
           const formattedTime = formatPrayerTime(prayerTime, user.timezone);
-
           console.log(`[SelfHealingScheduler] Dispatching due reminder for ${user.id} -> ${prayerName} at ${formattedTime}`);
 
           if (user.platform === 'telegram') {
@@ -36,8 +32,25 @@ export async function checkAndDispatchDueReminders(): Promise<number> {
             await sendWhatsAppNotification(user.chatId, prayerName, formattedTime);
           }
 
-          // Mark as notified today to prevent double sending
           await userRepository.markPrayerNotified(user.id, prayerName, todayStr);
+          dispatchedCount++;
+        }
+
+        // 2. Interactive Check-in (30 minutes after prayer time)
+        const checkinTargetMs = prayerTime.getTime() + (30 * 60 * 1000);
+        const checkinDiffMinutes = (now.getTime() - checkinTargetMs) / (1000 * 60);
+        const checkinKey = `Checkin_${prayerName}`;
+        const lastCheckinDate = user.lastNotified?.[checkinKey];
+
+        if (checkinDiffMinutes >= 0 && checkinDiffMinutes <= 15 && lastCheckinDate !== todayStr) {
+          console.log(`[SelfHealingScheduler] Dispatching 30-min interactive check-in for ${user.id} -> ${prayerName}`);
+
+          if (user.platform === 'whatsapp') {
+            const isOverallIsha = prayerName === 'Isha';
+            await sendWhatsAppInteractiveCheckin(user.chatId, prayerName, isOverallIsha);
+          }
+
+          await userRepository.markPrayerNotified(user.id, checkinKey, todayStr);
           dispatchedCount++;
         }
       }
@@ -48,3 +61,4 @@ export async function checkAndDispatchDueReminders(): Promise<number> {
 
   return dispatchedCount;
 }
+
