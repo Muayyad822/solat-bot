@@ -17,13 +17,13 @@ export async function sendWhatsAppNotification(
 
   const url = `https://graph.facebook.com/v20.0/${config.whatsapp.phoneNumberId}/messages`;
 
-  // 1. Try sending via Pre-Approved Utility Template
+  // 1. Try sending via Pre-Approved Utility/Marketing Template (nidaa_prayer_alert)
   const templatePayload = {
     messaging_product: 'whatsapp',
     to: phoneNumber,
     type: 'template',
     template: {
-      name: 'nidaa_prayer_reminder',
+      name: 'nidaa_prayer_alert',
       language: { code: 'en' },
       components: [
         {
@@ -55,9 +55,22 @@ export async function sendWhatsAppNotification(
         'Content-Type': 'application/json',
       },
     });
-    console.log(`[WhatsApp] Successfully sent Nidaa template message to ${phoneNumber}. Message ID:`, response.data?.messages?.[0]?.id);
+    console.log(`[WhatsApp] Successfully sent Nidaa template 'nidaa_prayer_alert' to ${phoneNumber}. Message ID:`, response.data?.messages?.[0]?.id);
   } catch (err) {
-    console.warn(`[WhatsApp] Template 'nidaa_prayer_reminder' failed or in review. Falling back to free-form text message...`);
+    console.warn(`[WhatsApp] Template 'nidaa_prayer_alert' failed or in review. Retrying with 'nidaa_prayer_reminder'...`);
+    
+    // Fallback attempt to nidaa_prayer_reminder
+    const legacyTemplatePayload = { ...templatePayload, template: { ...templatePayload.template, name: 'nidaa_prayer_reminder' } };
+    try {
+      const legacyRes = await axios.post(url, legacyTemplatePayload, {
+        headers: { Authorization: `Bearer ${config.whatsapp.accessToken}`, 'Content-Type': 'application/json' },
+      });
+      console.log(`[WhatsApp] Successfully sent legacy template 'nidaa_prayer_reminder' to ${phoneNumber}. Message ID:`, legacyRes.data?.messages?.[0]?.id);
+      return;
+    } catch (legacyErr) {
+      console.warn(`[WhatsApp] Legacy template also failed. Falling back to free-form text payload...`);
+    }
+
     try {
       const fallbackResponse = await axios.post(url, textPayload, {
         headers: {
