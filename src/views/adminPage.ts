@@ -357,6 +357,31 @@ export function getAdminPageHtml(initialStats: UserStats): string {
       border-color: var(--accent-primary);
       color: var(--accent-primary);
     }
+
+    .page-size-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .page-size-select {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .page-size-select:focus {
+      border-color: var(--accent-primary);
+    }
   </style>
 </head>
 <body>
@@ -434,6 +459,16 @@ export function getAdminPageHtml(initialStats: UserStats): string {
       <!-- Pagination Footer -->
       <div class="pagination-bar">
         <div id="pageSummary">Showing 0 of 0 users</div>
+        <div class="page-size-wrapper">
+          <label for="pageSizeSelect">Show:</label>
+          <select id="pageSizeSelect" class="page-size-select" onchange="onPageSizeChange(this.value)">
+            <option value="25">25 per page</option>
+            <option value="50" selected>50 per page</option>
+            <option value="100">100 per page</option>
+            <option value="250">250 per page</option>
+            <option value="all">Show All</option>
+          </select>
+        </div>
         <div class="page-controls">
           <button class="btn-page" id="btnPrev" onclick="changePage(-1)">← Previous</button>
           <span id="pageIndicator" style="font-weight: 600; color: var(--accent-glow);">Page 1</span>
@@ -448,7 +483,13 @@ export function getAdminPageHtml(initialStats: UserStats): string {
     let activeFilter = 'all';
     let searchQuery = '';
     let currentPage = 1;
-    const pageSize = 10;
+    let pageSize = 50;
+
+    function onPageSizeChange(val) {
+      pageSize = val === 'all' ? 999999 : parseInt(val, 10);
+      currentPage = 1;
+      renderTable();
+    }
 
     async function fetchStats() {
       try {
