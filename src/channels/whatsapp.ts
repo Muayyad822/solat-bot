@@ -2,12 +2,21 @@ import axios from 'axios';
 import { config } from '../config/env.js';
 import { getRandomReflection } from '../domain/prayerTimes.js';
 
+// Emergency Kill-Switch: Set PAUSE_WHATSAPP to true to completely stop all WhatsApp dispatches
+const PAUSE_WHATSAPP = process.env.PAUSE_WHATSAPP !== 'false'; // Defaults to paused to protect billing!
+
 export async function sendWhatsAppNotification(
   phoneNumber: string,
   prayerName: string,
   targetTimeFormatted: string
 ): Promise<void> {
+  if (PAUSE_WHATSAPP) {
+    console.log(`[WhatsApp Paused] Emergency pause active. Skipping notification to ${phoneNumber}`);
+    return;
+  }
+
   const reflection = getRandomReflection(prayerName);
+
 
   if (!config.whatsapp.phoneNumberId || !config.whatsapp.accessToken) {
     console.warn(`[WhatsApp] Missing WHATSAPP_PHONE_NUMBER_ID or WHATSAPP_ACCESS_TOKEN. Mocking message delivery to ${phoneNumber}`);
@@ -90,6 +99,11 @@ export async function sendWhatsAppInteractiveCheckin(
   prayerName: string,
   isOverallIsha: boolean = false
 ): Promise<void> {
+  if (PAUSE_WHATSAPP) {
+    console.log(`[WhatsApp Paused] Emergency pause active. Skipping interactive check-in to ${phoneNumber}`);
+    return;
+  }
+
   if (!config.whatsapp.phoneNumberId || !config.whatsapp.accessToken) {
     console.warn(`[WhatsApp] Missing credentials. Mocking interactive check-in to ${phoneNumber}`);
     console.log(`[WhatsApp Mock Checkin] Prayer: ${prayerName}, Overall: ${isOverallIsha}`);
